@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel", "setuptools_scm[toml]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dp-dau-mau"
+version = "0.1.0"
+description = "Differentially private DAU/MAU counter with deletion support"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "DP Engineering Team" }]
+dependencies = [
+  "fastapi>=0.111,<0.113",
+  "uvicorn[standard]>=0.30,<0.32",
+  "pydantic>=2.7,<2.9",
+  "numpy>=1.26,<2.1",
+  "pandas>=2.2,<2.3",
+  "sqlalchemy>=2.0,<2.1",
+  "matplotlib>=3.8,<3.10",
+  "typer>=0.12,<0.13",
+  "python-dotenv>=1.0,<1.1",
+  "scipy>=1.11,<1.14",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.1,<8.3",
+  "pytest-cov>=4.1,<5.0",
+  "hypothesis>=6.100,<7.0",
+  "mypy>=1.9,<1.12",
+  "ruff>=0.4,<0.6",
+  "black>=24.4,<25.0",
+  "pre-commit>=3.6,<4.0",
+]
+theta = ["datasketches>=4.0,<5.0"]
+hllpp = ["datasketch>=1.6,<2.0"]
+
+[project.scripts]
+dpdau = "cli.dpdau:app"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = "\\.pyi?$"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "W", "I", "B", "UP", "N", "DTZ"]
+extend-exclude = ["eval/notebooks"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dp_core", "service"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true
+strict_optional = true
+no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+exclude = ["eval/notebooks"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true

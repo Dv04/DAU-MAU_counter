@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  api:
+    build: ..
+    ports:
+      - "8000:8000"
+    environment:
+      DATA_DIR: {{DATA_DIR}}
+      EXPERIMENT_ID: {{EXPERIMENT_ID}}
+      EPSILON_DAU: {{EPSILON_DAU}}
+      EPSILON_MAU: {{EPSILON_MAU}}
+      DELTA: {{DELTA}}
+      SKETCH_IMPL: {{SKETCH_IMPL}}
+    volumes:
+      - {{DATA_DIR}}:/data
