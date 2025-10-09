@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from typing import Iterable
+from collections.abc import Iterable
 
 from .base import DistinctSketch
 
@@ -46,7 +46,7 @@ class HllppSketch(DistinctSketch):
             raise TypeError("HllppSketch can only merge another HllppSketch.")
         if other.precision != self.precision:
             raise ValueError("Precision mismatch between sketches.")
-        self.registers = [max(a, b) for a, b in zip(self.registers, other.registers)]
+        self.registers = [max(a, b) for a, b in zip(self.registers, other.registers, strict=False)]
 
     def estimate(self) -> float:
         indicator_sum = sum(2.0 ** (-r) for r in self.registers)
@@ -59,10 +59,10 @@ class HllppSketch(DistinctSketch):
             return float(-(1 << 32) * math.log(1 - raw_estimate / (1 << 32)))
         return float(raw_estimate)
 
-    def copy(self) -> "HllppSketch":
+    def copy(self) -> HllppSketch:
         return HllppSketch(self.precision, self.registers.copy())
 
-    def difference(self, other: DistinctSketch) -> "DistinctSketch":
+    def difference(self, other: DistinctSketch) -> DistinctSketch:
         raise NotImplementedError(
             "HllppSketch does not support difference; rebuild via cached per-day keys "
             "and respect {{HLL_REBUILD_DAYS_BUFFER}}."

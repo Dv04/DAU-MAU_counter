@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import datetime as dt
+import json
 from pathlib import Path
-from typing import Iterable, List
 
 import typer
 
@@ -17,8 +16,8 @@ DEFAULT_EVENTS = Path("{{DATA_DIR}}/streams/sim.jsonl")
 app = typer.Typer(help="Run accuracy and budget evaluations.")
 
 
-def load_events(path: Path) -> List[EventRecord]:
-    records: List[EventRecord] = []
+def load_events(path: Path) -> list[EventRecord]:
+    records: list[EventRecord] = []
     with path.open("r", encoding="utf-8") as fp:
         for line in fp:
             payload = json.loads(line)
@@ -45,13 +44,15 @@ def build_config(sketch_impl: str, epsilon: float) -> config_module.AppConfig:
 @app.command()
 def main(
     events: Path = typer.Option(DEFAULT_EVENTS, help="Input events JSONL"),
-    sketches: List[str] = typer.Option(["set"], help="Sketch implementations to evaluate"),
-    epsilons: List[float] = typer.Option([0.3, 0.5], help="Epsilon values to sweep"),
-    out: Path = typer.Option(Path("{{DATA_DIR}}/experiments/{{EXPERIMENT_ID}}/results.json"), help="Output results path"),
+    sketches: list[str] = typer.Option(["set"], help="Sketch implementations to evaluate"),
+    epsilons: list[float] = typer.Option([0.3, 0.5], help="Epsilon values to sweep"),
+    out: Path = typer.Option(
+        Path("{{DATA_DIR}}/experiments/{{EXPERIMENT_ID}}/results.json"), help="Output results path"
+    ),
 ) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     events_data = load_events(events)
-    results: List[dict] = []
+    results: list[dict] = []
 
     for sketch in sketches:
         for epsilon in epsilons:

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -12,13 +13,13 @@ class DistinctSketch(Protocol):
 
     def add(self, key: bytes) -> None: ...
 
-    def merge(self, other: "DistinctSketch") -> None: ...
+    def merge(self, other: DistinctSketch) -> None: ...
 
     def estimate(self) -> float: ...
 
-    def copy(self) -> "DistinctSketch": ...
+    def copy(self) -> DistinctSketch: ...
 
-    def difference(self, other: "DistinctSketch") -> "DistinctSketch": ...
+    def difference(self, other: DistinctSketch) -> DistinctSketch: ...
 
 
 SketchBuilder = Callable[[], DistinctSketch]

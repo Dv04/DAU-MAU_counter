@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import re
 import secrets
-import base64
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -33,7 +32,7 @@ def _resolve_int(value: object, placeholder: str, default: int) -> int:
     return int(value)
 
 
-def _resolve_string(value: object, placeholder: str, default: Optional[str] = None) -> str:
+def _resolve_string(value: object, placeholder: str, default: str | None = None) -> str:
     if value is None:
         if default is not None:
             return default
@@ -134,8 +133,8 @@ class StorageSettings(BaseModel):
 class SecuritySettings(BaseModel):
     hash_salt_secret: str = Field(default="{{HASH_SALT_SECRET}}")
     hash_salt_rotation_days: int = Field(default=30)
-    api_key: Optional[str] = Field(default=None)
-    admin_email: Optional[str] = Field(default="{{ADMIN_EMAIL}}")
+    api_key: str | None = Field(default=None)
+    admin_email: str | None = Field(default="{{ADMIN_EMAIL}}")
     timezone: str = Field(default="{{TIMEZONE}}")
 
     @field_validator("hash_salt_secret", mode="before")
@@ -147,7 +146,7 @@ class SecuritySettings(BaseModel):
         return _resolve_int(v, "{{HASH_SALT_ROTATION_DAYS}}", 30)
 
     @field_validator("api_key", mode="before")
-    def _v_api_key(cls, v: object) -> Optional[str]:
+    def _v_api_key(cls, v: object) -> str | None:
         if v is None:
             return None
         if isinstance(v, str) and PLACEHOLDER_PATTERN.fullmatch(v.strip()):
@@ -155,7 +154,7 @@ class SecuritySettings(BaseModel):
         return str(v)
 
     @field_validator("admin_email", mode="before")
-    def _v_admin_email(cls, v: object) -> Optional[str]:
+    def _v_admin_email(cls, v: object) -> str | None:
         if v is None:
             return None
         if isinstance(v, str) and PLACEHOLDER_PATTERN.fullmatch(v.strip()):
@@ -170,11 +169,11 @@ class SecuritySettings(BaseModel):
 class ServiceSettings(BaseModel):
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000)
-    database_url: Optional[str] = Field(default="{{SERVICE_DATABASE_URL}}")
-    kafka_topic: Optional[str] = Field(default="{{KAFKA_TOPIC}}")
+    database_url: str | None = Field(default="{{SERVICE_DATABASE_URL}}")
+    kafka_topic: str | None = Field(default="{{KAFKA_TOPIC}}")
 
     @field_validator("database_url", mode="before")
-    def _v_db(cls, v: object) -> Optional[str]:
+    def _v_db(cls, v: object) -> str | None:
         if v is None:
             return None
         if isinstance(v, str) and PLACEHOLDER_PATTERN.fullmatch(v.strip()):
@@ -182,7 +181,7 @@ class ServiceSettings(BaseModel):
         return str(v)
 
     @field_validator("kafka_topic", mode="before")
-    def _v_kafka(cls, v: object) -> Optional[str]:
+    def _v_kafka(cls, v: object) -> str | None:
         if v is None:
             return None
         if isinstance(v, str) and PLACEHOLDER_PATTERN.fullmatch(v.strip()):
@@ -198,5 +197,5 @@ class AppConfig(BaseModel):
     service: ServiceSettings = Field(default_factory=ServiceSettings)
 
     @classmethod
-    def from_env(cls) -> "AppConfig":
+    def from_env(cls) -> AppConfig:
         return cls()

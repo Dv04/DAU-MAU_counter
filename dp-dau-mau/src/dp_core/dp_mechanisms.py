@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
-from typing import Literal, Tuple
+from typing import Literal
 
 
 @dataclass(slots=True)
@@ -15,7 +15,7 @@ class MechanismResult:
     mechanism: Literal["laplace", "gaussian"]
     epsilon: float
     delta: float
-    confidence_interval: Tuple[float, float]
+    confidence_interval: tuple[float, float]
     seed: int
 
 

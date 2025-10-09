@@ -6,7 +6,6 @@ import datetime as dt
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 def month_key(day: dt.date) -> str:
@@ -85,7 +84,7 @@ class PrivacyAccountant:
     def close(self) -> None:
         self._conn.close()
 
-    def __enter__(self) -> "PrivacyAccountant":
+    def __enter__(self) -> PrivacyAccountant:
         return self
 
     def __exit__(self, *_exc_info: object) -> None:

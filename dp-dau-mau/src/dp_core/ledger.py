@@ -6,7 +6,6 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Sequence
 
 
 @dataclass(slots=True)
@@ -121,7 +120,7 @@ class Ledger:
     def close(self) -> None:
         self._conn.close()
 
-    def __enter__(self) -> "Ledger":
+    def __enter__(self) -> Ledger:
         return self
 
     def __exit__(self, *_exc_info: object) -> None:

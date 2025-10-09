@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -12,7 +12,7 @@ class EventModel(BaseModel):
     user_id: str = Field(..., description="External user identifier.")
     op: str = Field(..., pattern=r"^[\+\-]$", description="Turnstile operation '+' or '-'.")
     day: dt.date = Field(..., description="Day in YYYY-MM-DD using {{TIMEZONE}} timeline.")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("op")
     @classmethod
@@ -23,11 +23,11 @@ class EventModel(BaseModel):
 
 
 class EventIngestionRequest(BaseModel):
-    event: Optional[EventModel] = None
-    events: Optional[List[EventModel]] = None
+    event: EventModel | None = None
+    events: list[EventModel] | None = None
 
     @model_validator(mode="after")
-    def ensure_payload(self) -> "EventIngestionRequest":
+    def ensure_payload(self) -> EventIngestionRequest:
         if self.event and self.events:
             raise ValueError("Provide either 'event' or 'events', not both.")
         if not self.event and not self.events:
@@ -49,8 +49,8 @@ class MetricResponse(BaseModel):
     sketch_impl: str
     budget_remaining: float
     version: str
-    exact_value: Optional[float] = None
-    window_days: Optional[int] = None
+    exact_value: float | None = None
+    window_days: int | None = None
 
 
 class HealthResponse(BaseModel):

@@ -6,13 +6,13 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Set
 
 PLACEHOLDER_PATTERN = re.compile(r"\{\{([A-Z0-9_]+)\}\}")
 
 
-def collect_placeholders(paths: Iterable[Path]) -> Set[str]:
+def collect_placeholders(paths: Iterable[Path]) -> set[str]:
     tokens: set[str] = set()
     for path in paths:
         if path.is_dir():
@@ -34,7 +34,7 @@ def repo_files(root: Path) -> Iterable[Path]:
         yield path
 
 
-def parse_manifest(manifest: Path) -> Set[str]:
+def parse_manifest(manifest: Path) -> set[str]:
     tokens: set[str] = set()
     try:
         text = manifest.read_text(encoding="utf-8")
@@ -51,7 +51,9 @@ def parse_manifest(manifest: Path) -> Set[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("."), help="Repository root to scan.")
-    parser.add_argument("--manifest", type=Path, required=True, help="Path to Placeholders.md manifest.")
+    parser.add_argument(
+        "--manifest", type=Path, required=True, help="Path to Placeholders.md manifest."
+    )
     args = parser.parse_args()
 
     root = args.root.resolve()

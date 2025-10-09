@@ -8,7 +8,6 @@ import hmac
 import os
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Optional
 
 from .config import AppConfig
 
@@ -28,12 +27,12 @@ class SaltManager:
 
     def salt_for_day(self, day: dt.date) -> bytes:
         rotation_epoch = day.toordinal() // max(self.rotation_days, 1)
-        message = f"{day.isoformat()}::{rotation_epoch}".encode("utf-8")
+        message = f"{day.isoformat()}::{rotation_epoch}".encode()
         secret_bytes = _ensure_secret_bytes(self.secret)
         digest = hmac.new(secret_bytes, message, sha256).digest()
         return digest
 
-    def rotate_secret(self, new_secret: str) -> "SaltManager":
+    def rotate_secret(self, new_secret: str) -> SaltManager:
         return SaltManager(secret=new_secret, rotation_days=self.rotation_days)
 
 
@@ -63,7 +62,7 @@ def generate_random_secret() -> str:
     return "b64:" + base64.b64encode(os.urandom(32)).decode("utf-8")
 
 
-def truncate_key(key: bytes, length: Optional[int] = None) -> bytes:
+def truncate_key(key: bytes, length: int | None = None) -> bytes:
     """Truncate hashed keys to the desired length for sketches."""
 
     if length is None:

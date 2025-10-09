@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import random
-import datetime as dt
 from pathlib import Path
 
 import typer
@@ -18,7 +18,9 @@ def main(
     window: int = typer.Option(30, help="Window size", show_default="{{MAU_WINDOW_DAYS}}"),
     flips: int = typer.Option(2, help="Max flips per user", show_default="{{W_BOUND}}"),
     seed: int = typer.Option(20251009, help="Random seed", show_default="{{DEFAULT_SEED}}"),
-    out: Path = typer.Option(Path("{{DATA_DIR}}/streams/adversarial.jsonl"), help="Output JSONL path"),
+    out: Path = typer.Option(
+        Path("{{DATA_DIR}}/streams/adversarial.jsonl"), help="Output JSONL path"
+    ),
 ) -> None:
     rng = random.Random(seed)
     out.parent.mkdir(parents=True, exist_ok=True)

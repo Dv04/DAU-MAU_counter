@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, Tuple
 
 from .sketches.base import DistinctSketch, SketchFactory
 
@@ -24,7 +24,7 @@ class DaySnapshot:
 class WindowManager:
     sketch_factory: SketchFactory
     hll_rebuild_buffer: int
-    snapshots: Dict[str, DaySnapshot] = field(default_factory=dict)
+    snapshots: dict[str, DaySnapshot] = field(default_factory=dict)
 
     def mark_dirty(self, day: str) -> None:
         if day in self.snapshots:
@@ -55,7 +55,7 @@ class WindowManager:
 
     def get_dau(
         self, day: str, events_loader: Callable[[str], Iterable[tuple[str, bytes]]]
-    ) -> Tuple[float, DistinctSketch, set[bytes]]:
+    ) -> tuple[float, DistinctSketch, set[bytes]]:
         snapshot = self.get_snapshot(day, events_loader)
         return snapshot.sketch.estimate(), snapshot.sketch, snapshot.keys
 
@@ -64,7 +64,7 @@ class WindowManager:
         end_day: str,
         window_days: int,
         events_loader: Callable[[str], Iterable[tuple[str, bytes]]],
-    ) -> Tuple[float, DistinctSketch]:
+    ) -> tuple[float, DistinctSketch]:
         end = parse_day(end_day)
         start = end - dt.timedelta(days=window_days - 1)
         union = self.sketch_factory.create()

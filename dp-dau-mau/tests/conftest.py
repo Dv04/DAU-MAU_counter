@@ -1,6 +1,5 @@
 import base64
 import os
-import random
 from collections.abc import Iterator
 from pathlib import Path
 

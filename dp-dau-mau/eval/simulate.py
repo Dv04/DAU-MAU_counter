@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import random
-import datetime as dt
 from pathlib import Path
 
 import typer
@@ -16,8 +16,12 @@ app = typer.Typer(help="Generate synthetic event streams for the DP DAU/MAU pipe
 def main(
     users: int = typer.Option(10000, help="Number of unique users", show_default="{{N_USERS}}"),
     days: int = typer.Option(60, help="Number of days to simulate"),
-    p_active: float = typer.Option(0.2, help="Daily active probability", show_default="{{P_ACTIVE}}"),
-    delete_rate: float = typer.Option(0.05, help="Probability of delete events", show_default="{{DELETE_RATE}}"),
+    p_active: float = typer.Option(
+        0.2, help="Daily active probability", show_default="{{P_ACTIVE}}"
+    ),
+    delete_rate: float = typer.Option(
+        0.05, help="Probability of delete events", show_default="{{DELETE_RATE}}"
+    ),
     seed: int = typer.Option(20251009, help="Random seed", show_default="{{DEFAULT_SEED}}"),
     out: Path = typer.Option(Path("{{DATA_DIR}}/streams/sim.jsonl"), help="Output JSONL path"),
 ) -> None:

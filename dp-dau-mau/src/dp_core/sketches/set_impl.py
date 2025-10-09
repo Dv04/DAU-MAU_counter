@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from .base import DistinctSketch
 
@@ -25,10 +25,10 @@ class SetSketch(DistinctSketch):
     def estimate(self) -> float:
         return float(len(self._keys))
 
-    def copy(self) -> "SetSketch":
+    def copy(self) -> SetSketch:
         return SetSketch(self._keys)
 
-    def difference(self, other: DistinctSketch) -> "SetSketch":
+    def difference(self, other: DistinctSketch) -> SetSketch:
         if not isinstance(other, SetSketch):
             raise TypeError("SetSketch difference requires another SetSketch.")
         return SetSketch(self._keys.difference(other._keys))

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from .base import DistinctSketch
 
 try:
@@ -20,7 +18,7 @@ class ThetaSketchUnavailable(RuntimeError):
 class ThetaSketch(DistinctSketch):
     """Wrapper around Apache DataSketches Theta implementation."""
 
-    def __init__(self, sketch: Optional["UpdateThetaSketch"] = None) -> None:
+    def __init__(self, sketch: UpdateThetaSketch | None = None) -> None:
         if UpdateThetaSketch is None:
             raise ThetaSketchUnavailable(
                 "datasketches package not installed. Set {{SKETCH_IMPL}} to 'set' or install the dependency."
@@ -38,12 +36,12 @@ class ThetaSketch(DistinctSketch):
     def estimate(self) -> float:
         return float(self._sketch.get_estimate())
 
-    def copy(self) -> "ThetaSketch":
+    def copy(self) -> ThetaSketch:
         new_sketch = UpdateThetaSketch()
         new_sketch.merge(self._sketch)
         return ThetaSketch(new_sketch)
 
-    def difference(self, other: DistinctSketch) -> "ThetaSketch":
+    def difference(self, other: DistinctSketch) -> ThetaSketch:
         if ThetaANotB is None:
             raise ThetaSketchUnavailable("datasketches ThetaANotB unavailable.")
         if not isinstance(other, ThetaSketch):

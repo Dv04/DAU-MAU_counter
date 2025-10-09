@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import typer
 
@@ -33,7 +33,9 @@ def _pipeline() -> PipelineManager:
 
 
 @app.command()
-def ingest(from_path: Path = typer.Argument(Path("{{EXAMPLE_DATASET_PATH}}"), help="Path to events JSONL")) -> None:
+def ingest(
+    from_path: Path = typer.Argument(Path("{{EXAMPLE_DATASET_PATH}}"), help="Path to events JSONL"),
+) -> None:
     """Ingest a batch of events from disk."""
 
     pipeline = _pipeline()
@@ -80,7 +82,9 @@ def reset_budget(
 @app.command(name="rotate-salt")
 def rotate_salt(
     effective: dt.date = typer.Argument(..., help="Effective day for new salt"),
-    rotation_days: int = typer.Option(30, help="Rotation cadence", show_default="{{HASH_SALT_ROTATION_DAYS}}"),
+    rotation_days: int = typer.Option(
+        30, help="Rotation cadence", show_default="{{HASH_SALT_ROTATION_DAYS}}"
+    ),
 ) -> None:
     secret = generate_random_secret()
     typer.echo("Generated new salt secret. Update your secrets manager:")
