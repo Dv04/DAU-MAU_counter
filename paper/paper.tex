@@ -1,0 +1,211 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{hyperref}
+\usepackage{url}
+
+\title{Erasure-Compliant, Differentially Private Distinct Counting for CCTV Analytics:\\
+An Edge-to-Cloud System with Flippancy-Aware Guarantees}
+\author{Dev Sanghvi \\ Rice University}
+\date{{\small Draft: {{PAPER_DATE}}}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+CCTV and video-AI platforms increasingly rely on aggregate analytics---e.g., daily/weekly/monthly distinct visitors by camera or zone---to inform safety, staffing, retail operations, and city planning. These analytics must \emph{both} protect subjects' privacy and honor deletion requests (GDPR/CCPA). We present an erasure-compliant, differentially private (DP) pipeline for \emph{distinct} counting (DAU/MAU-style occupancy) under \emph{continual release} and \emph{turnstile} streaming (insertions and deletions). The system combines: (i) \textbf{edge pseudonymization} (daily salt hashing of per-subject signals); (ii) \textbf{Theta sketches} with union and \emph{A-not-B} for efficient per-day and rolling-window distinct counting and deletions; and (iii) a \textbf{flippancy-aware} DP release mechanism calibrated for item-level privacy under continual observation. We implement a working prototype with REST APIs, a privacy accountant, and synthetic CCTV workloads. Results show that at $\epsilon={{EPSILON_DAU}}$ (daily) and $\epsilon={{EPSILON_MAU}}$ (monthly), additive error is within {{ERROR_PCT}}{\%} for city-scale settings, and ingestion sustains {{THROUGHPUT}} events/s on a commodity machine (placeholders). We discuss operational deletion replay, privacy budgeting, and sketch choices (Theta vs. HLL++ rebuilds). This work provides a practical recipe to deliver privacy-preserving, erasure-aware CCTV analytics from edge to cloud while aligning with modern DP guidance.
+\end{abstract}
+
+\section{Introduction}
+CCTV deployments across retail, campuses, and smart cities increasingly require aggregate metrics such as \emph{distinct visitors per day} (DAU) and per rolling window (e.g., 30-day MAU). These metrics guide staffing, utilization, and safety operations, while customers and regulators demand that systems avoid raw identities and support the \emph{right to erasure} (GDPR Art.~17) \cite{GDPR}. 
+
+A natural tension arises: continual DAU/MAU releases can accumulate privacy leakage; identity-bearing logs complicate compliance and risk. Differential Privacy (DP) \cite{Dwork2006} provides a robust substrate: adding calibrated noise bounds an individual's influence. However, the CCTV setting adds two complications: (1) \emph{continual observation}---releasing daily aggregates over long horizons with composition; and (2) \emph{turnstile} updates---insertions and \emph{deletions} when subjects invoke erasure. Recent theory addresses distinct counting with deletions under continual observation via the \emph{flippancy} parameter $w$---the maximum number of presence/absence flips per subject---achieving error $\tilde{O}(\sqrt{w})$ at item-level DP and proving lower bounds for event-level DP \cite{Flippancy2023}.
+
+We contribute a practical, end-to-end pipeline for CCTV analytics that is \emph{erasure-compliant} and \emph{differentially private}:
+\begin{itemize}
+    \item \textbf{Edge pseudonymization.} On camera/NVR, transform short-lived subject signals (e.g., track embeddings or plate strings) into \emph{daily salted hashes}; retain no raw identities.
+    \item \textbf{Sketch-based distinct counting.} Use \emph{Theta} sketches for per-day distincts and rolling-window unions; support deletions via \emph{A-not-B}. Contrast with HLL++ (merge-only; no native delete) \cite{Flajolet2007,DataSketches,DataSketchesANotB}.
+    \item \textbf{Flippancy-aware DP releases.} Daily DAU and 30-day MAU with Laplace/Gaussian noise scaled for item-level DP under continual release; privacy accountant tracks budget and deterministic per-day noise prevents query averaging \cite{Dwork2006,Rogers2020}.
+\end{itemize}
+
+We implement a prototype with a REST service, a budget ledger, and synthetic CCTV workloads. Placeholders indicate where empirical figures slot in. The design generalizes to multi-tenant cloud analytics and complements video-DP systems such as VideoDP/Privid that target frame-level queries \cite{VideoDP2020,Privid2022} by focusing on \emph{distinct} telemetry.
+
+\paragraph{Contributions.}
+(1) A deployment-ready \emph{edge$\to$cloud} recipe for erasure-aware DP distinct counting in CCTV; (2) a sketch layer with \emph{A-not-B} to operationalize deletions; (3) a continual-release DP mechanism and budget service tuned to flippancy; (4) an evaluation plan and operational guidance for compliance-ready rollouts.
+
+\section{Background and Related Work}
+\paragraph{Differential Privacy and composition.}
+DP bounds the change in output distribution due to any single subject \cite{Dwork2006}. Repeated releases compose: in basic composition, $\epsilon$ values add across days; advanced analyses (e.g., R\'enyi DP) can tighten bounds. Deterministic per-query/day noise seeds prevent adversarial re-query averaging \cite{Rogers2020}. NIST SP~800-226 provides reporting guidance for DP claims and audits \cite{NIST800226}.
+
+\paragraph{Turnstile distinct counting with deletions.}
+Under continual observation and deletions, event-level DP faces strong lower bounds; \emph{flippancy} $w$ enables item-level DP with additive error $\tilde{O}(\sqrt{w})$ \cite{Flippancy2023}. CCTV workloads naturally bound $w$ by coalescing to one presence per subject per day.
+
+\paragraph{Distinct sketches.}
+HyperLogLog (HLL/HLL++) estimates distincts with small memory but is \emph{append-only} (no deletions) \cite{Flajolet2007}. Theta (KMV) sketches support \emph{union}, \emph{intersection}, and crucially \emph{A-not-B} (set difference) \cite{Dasgupta2016,DataSketches,DataSketchesANotB}. For large sets, order-invariant cardinality estimators exhibit inherent DP-like behavior, though we still add explicit DP noise \cite{Dickens2023}.
+
+\paragraph{Video privacy.}
+Systems such as VideoDP and Privid study DP for video analytics (e.g., counts/durations) \cite{VideoDP2020,Privid2022}. Our focus is complementary: \emph{distinct} telemetry under deletions with continual releases.
+
+\section{Problem Formulation}
+We consider many cameras/zones producing subject activity. For day $t$, define $S_t$ as the set of (pseudonymous) subjects active that day. DAU$(t)=|S_t|$. For a window $W$ (e.g., $30$ days), MAU$(t)=|\bigcup_{i=t-W+1}^{t} S_i|$.
+
+\textbf{Privacy.} Item-level DP protects a subject’s \emph{entire} trace. We release DAU/MAU once per day with $(\epsilon_t,\delta_t)$, tracking composition.
+
+\textbf{Turnstile and deletions.} Insertions add a subject to $S_t$; erasures request removing a subject from \emph{all} $S_i$ where present. We maintain updated sets/sketches and re-release future metrics accordingly.
+
+\textbf{Flippancy.} Let $w$ bound per-subject flips across the horizon; daily coalescing keeps $w$ small in CCTV workloads.
+
+\section{System Overview (Edge \texorpdfstring{$\to$}{->} Cloud)}
+\subsection*{Edge/NVR}
+\textbf{Pseudonymization.} For a short-lived signal (track embedding or plate string) $x$, compute
+\[
+\mathrm{user\_key} = H(x \,\|\, \mathrm{salt}_{\mathrm{day}})
+\]
+with a daily-rotated salt; drop $x$. Maintain a per-day Theta sketch $T_t$ (or exact set for small loads). Upload sketch bytes (or DP’d scalar).
+
+\subsection*{Gateway/Site}
+Union per-camera day sketches into site-level $T^{\mathrm{site}}_t$. Maintain a rolling union $U_t = \mathrm{Union}(T_{t-W+1},\ldots,T_t)$.
+For erasure of subject $u$ across days $\mathcal{D}$, construct $U^{(u)}_d$ (tiny sketches containing $u$ for each $d\in\mathcal{D}$) and apply $T_d \leftarrow \mathrm{AminusB}(T_d, U^{(u)}_d)$; update $U_t$ accordingly.
+
+\subsection*{Cloud/Tenant}
+Aggregate site sketches (unions), apply DP release (Section~\ref{sec:algorithms}), and log to a privacy budget ledger (metric, day, $\epsilon,\delta$, seed).
+
+\section{Algorithms}\label{sec:algorithms}
+\paragraph{Sketch layer.}
+We implement an interface with backends:
+\begin{itemize}
+    \item \emph{Theta (preferred):} supports union/intersection/A-not-B; fixed size $k$ controls RSE. Efficient for rolling MAU and deletions \cite{Dasgupta2016,DataSketchesANotB}.
+    \item \emph{Exact sets (baseline):} for small loads/testing.
+    \item \emph{HLL++ (optional):} union-only; deletions require day-level rebuild from a light index \cite{Flajolet2007}.
+\end{itemize}
+
+\paragraph{DP continual release.}
+For a count query $f_t$ (DAU or MAU on day $t$), with item-level sensitivity $\Delta=1$, we release
+\[
+\tilde{f}_t = f_t + \eta_t, \quad \eta_t \sim \mathrm{Lap}\!\left(\tfrac{\Delta}{\epsilon_t}\right).
+\]
+We use deterministic, per-(metric,day) seeding to prevent averaging via re-queries \cite{Rogers2020}. A budget service records $(t,\epsilon_t,\delta_t)$ and enforces caps. For stronger composition, swap to Gaussian/RDP.
+
+\paragraph{Deletion replay.}
+On erasure of subject $u$:
+(1) identify days $\mathcal{D}$; (2) remove $u$ from $T_d$ using A-not-B (Theta) or rebuild (HLL++); (3) update window unions; (4) future releases use updated values with fresh noise. Historical releases are \emph{not retroactively DP-redactable}; we treat them as superseded (operational policy).
+
+\section{Implementation}
+We built a Python 3.11 prototype (FastAPI service, SQLite ledger). Modules:
+\begin{itemize}
+    \item \texttt{sketches/}: Theta backend (via DataSketches) and exact sets.
+    \item \texttt{pipeline.py}: day-level stores, rolling unions, deletions, and DP releases.
+    \item \texttt{privacy\_accountant.py}: budget ledger; basic composition; warnings on cap.
+    \item \texttt{routes.py}: \texttt{POST /event}, \texttt{GET /dau/\{day\}}, \texttt{GET /mau/\{day\}}.
+    \item \texttt{auth.py}: optional API key.
+\end{itemize}
+\textbf{Noise seeding.} PRNG seeded by secret $s$ and key $(\mathrm{metric},\mathrm{day})$; rotate $s$ periodically. \textbf{Windows.} Maintain last $W={{MAU_WINDOW_DAYS}}$ days (drop older). \textbf{Edge.} For low-resource cameras, emit per-hour sets to gateway which compacts to per-day sketches.
+
+\section{Evaluation (placeholders)}\label{sec:evaluation}
+We outline the study; concrete numbers/plots are placeholders to be filled.
+
+\paragraph{Setup.}
+Synthetic CCTV-like traces over ${{EVAL_DAYS}}$ days; $N={{N_USERS}}$ subjects; per-day active {{DAILY_ACTIVE}}; overlap {{REPEAT_RATE}}\%. Deletions: start day {{DELETE_START}}, remove {{DELETE_COUNT}} subjects spread across prior days.
+
+\paragraph{Metrics.}
+(1) \textbf{Accuracy:} MAE/relative error for DAU/MAU under $\epsilon={{EPSILON_DAU}},{{EPSILON_MAU}}$; (2) \textbf{Sketch impact:} Theta vs exact; (3) \textbf{Deletions:} correctness of replay and effect on MAU; (4) \textbf{Latency/Throughput:} p50/p99 and ingestion rate.
+
+\paragraph{Results (to be inserted).}
+\begin{itemize}
+    \item \textbf{Noise accuracy:} mean DAU MAE $={{DAU_MAE}}$ (\% error $={{DAU_REL_ERR}}\%$); MAU rel. error $={{MAU_REL_ERR}}\%$. Figure~{{FIG_NOISE_ACCURACY}}.
+    \item \textbf{Sketch vs exact:} RSE $\approx$ {{THETA_RSE}}\% at $k={{THETA_K}}$; scatter near diagonal (Fig.~{{FIG_SKETCH_VS_EXACT}}).
+    \item \textbf{Deletions:} post-erasure MAU drops consistent with removed subjects $\,\pm\,$ DP noise (Table~{{TAB_DELETE}}).
+    \item \textbf{Performance:} ingestion {{THROUGHPUT}} events/s; queries $<{{QUERY_LAT_MS}}$ ms p99 (Fig.~{{FIG_PERF}}).
+\end{itemize}
+
+\section{Discussion}
+\textbf{Theta vs HLL++.} Theta’s A-not-B simplifies deletions and rolling windows; HLL++ suits union-only pipelines or day-rebuilds when deletes are rare \cite{Flajolet2007,DataSketchesANotB}. \textbf{Budgeting.} Expose customer-visible $\epsilon$ tiers; DAU vs MAU budget splits. \textbf{CCTV specifics.} Daily salt rotation breaks long-term linkability; zone partitioning bounds $w$; retention aligns with data minimization.
+
+\section{Limitations and Threats to Validity}
+Assumptions on tracker stability and coalescing bound flippancy; synthetic traces may not capture all deployment idiosyncrasies; sketch adversarial inputs and hash collisions; noise seed handling and multi-instance coordination.
+
+\section{Ethics and Compliance}
+No raw identities beyond transient signals; per-day salt rotation; erasure SLAs; DP documentation and audit via \cite{NIST800226}; DPIA/IRB if evaluating on human-subject traces.
+
+\section{Conclusion}
+We presented an edge-to-cloud, erasure-compliant DP pipeline for CCTV distinct analytics. By combining pseudonyms, Theta sketches, and flippancy-aware DP releases with a budget service, we deliver useful DAU/MAU metrics while honoring deletions and privacy. Future work: tree-aggregation for smoother continual releases, RDP accounting, federated deployments, and large-scale real-world evaluations.
+
+\begin{thebibliography}{99}
+
+\bibitem{GDPR}
+European Parliament and Council. \emph{General Data Protection Regulation (EU) 2016/679 (GDPR)}, 2016.
+
+\bibitem{Dwork2006}
+C.~Dwork, F.~McSherry, K.~Nissim, A.~Smith.
+Calibrating noise to sensitivity in private data analysis.
+In \emph{TCC}, 2006.
+
+\bibitem{Flippancy2023}
+(Authors). Counting Distinct Elements in the Turnstile Model with Differential Privacy under Continual Observation. \emph{NeurIPS}, 2023. (arXiv:2306.06723).
+
+\bibitem{Rogers2020}
+R.~Rogers et al.
+LinkedIn's Audience Engagements API: A Privacy Preserving Data Analytics System at Scale.
+arXiv:2002.05839, 2020.
+
+\bibitem{Flajolet2007}
+P.~Flajolet, \'{E}.~Fusy, O.~Gandouet, F.~Meunier.
+HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm.
+\emph{AOFA}, 2007.
+
+\bibitem{Dasgupta2016}
+A.~Dasgupta, K.~J.~Lang, L.~Rhodes, J.~Thaler.
+A Framework for Estimating Stream Expression Cardinalities.
+\emph{ICDT}, 2016.
+
+\bibitem{DataSketches}
+Apache DataSketches Project. Theta Sketches Documentation. \url{https://datasketches.apache.org/}, accessed {{ACCESS_DATE}}.
+
+\bibitem{DataSketchesANotB}
+Apache DataSketches. A-not-B and Set Operations for Theta Sketches. \url{https://datasketches.apache.org/}, accessed {{ACCESS_DATE}}.
+
+\bibitem{Dickens2023}
+C.~Dickens, J.~Thaler, D.~Ting.
+Order-Invariant Cardinality Estimators Are Differentially Private.
+\emph{SODA}, 2023.
+
+\bibitem{VideoDP2020}
+(Authors). VideoDP: A Platform for Differentially Private Video Analytics. \emph{PoPETs}, 2020.
+
+\bibitem{Privid2022}
+(Authors). Privid: Practical, Privacy-Preserving Video Analytics Queries. \emph{NSDI}, 2022.
+
+\bibitem{NIST800226}
+NIST Special Publication 800-226. \emph{A Taxonomy and Terminology of Differential Privacy Mechanisms and Applications}. 2025.
+
+\end{thebibliography}
+
+\appendix
+\section*{Appendix A: Placeholders and How to Complete the Paper}
+Replace every token below (search for the exact token text):
+
+\begin{itemize}
+    \item \textbf{{{PAPER_DATE}}}: Draft date (e.g., ``October 2025'').
+    \item \textbf{{{ACCESS_DATE}}}: Date you accessed online documentation pages.
+    \item \textbf{{{MAU_WINDOW_DAYS}}}: Window length (default 30).
+    \item \textbf{{{EPSILON_DAU}}}, \textbf{{{EPSILON_MAU}}}, \textbf{{{DELTA}}}: Privacy parameters used in evaluation.
+    \item \textbf{{{ERROR_PCT}}}: Overall relative error summary (e.g., ``2'').
+    \item \textbf{{{THROUGHPUT}}}: Ingestion throughput (events/s).
+    \item \textbf{{{QUERY_LAT_MS}}}: Query latency (ms).
+    \item \textbf{{{EVAL_DAYS}}}, \textbf{{{N_USERS}}}, \textbf{{{DAILY_ACTIVE}}}, \textbf{{{REPEAT_RATE}}}: Synthetic trace parameters.
+    \item \textbf{{{DELETE_START}}}, \textbf{{{DELETE_COUNT}}}: Deletion scenario parameters.
+    \item \textbf{{{DAU_MAE}}}, \textbf{{{DAU_REL_ERR}}}, \textbf{{{MAU_REL_ERR}}}: Accuracy metrics.
+    \item \textbf{{{THETA_K}}}, \textbf{{{THETA_RSE}}}: Theta sketch configuration and nominal RSE.
+    \item \textbf{{{FIG_NOISE_ACCURACY}}}, \textbf{{{FIG_SKETCH_VS_EXACT}}}, \textbf{{{FIG_PERF}}}, \textbf{{{TAB_DELETE}}}: Figure/table labels; add environments or remove references.
+    \item \textbf{{{ARCH_DIAGRAM_PATH}}}: If adding an architecture diagram figure (optional).
+\end{itemize}
+
+\paragraph{To finalize for submission:}
+(1) Fill placeholders and insert figures/tables; (2) ensure all citations have full bibliographic details (replace ``(Authors)'' with actual author lists if needed); (3) compile and check for warnings; (4) remove this appendix section if the venue discourages placeholder notes; (5) adopt the venue’s LaTeX class if required (ACM/IEEE).
+
+\end{document}

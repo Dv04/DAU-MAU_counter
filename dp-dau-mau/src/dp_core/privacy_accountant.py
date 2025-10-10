@@ -69,7 +69,11 @@ class PrivacyAccountant:
         seed: int,
     ) -> None:
         self._conn.execute(
-            "INSERT INTO releases (metric, day, period, epsilon, delta, mechanism, seed) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                "INSERT INTO releases "
+                "(metric, day, period, epsilon, delta, mechanism, seed) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)"
+            ),
             (metric, day.isoformat(), month_key(day), epsilon, delta, mechanism, seed),
         )
         self._conn.commit()

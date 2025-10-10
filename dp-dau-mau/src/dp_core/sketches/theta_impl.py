@@ -11,7 +11,7 @@ except ImportError:  # pragma: no cover - optional dependency
     UpdateThetaSketch = None  # type: ignore[assignment]
 
 
-class ThetaSketchUnavailable(RuntimeError):
+class ThetaSketchUnavailableError(RuntimeError):
     """Raised when the datasketches dependency is missing."""
 
 
@@ -20,8 +20,9 @@ class ThetaSketch(DistinctSketch):
 
     def __init__(self, sketch: UpdateThetaSketch | None = None) -> None:
         if UpdateThetaSketch is None:
-            raise ThetaSketchUnavailable(
-                "datasketches package not installed. Set {{SKETCH_IMPL}} to 'set' or install the dependency."
+            raise ThetaSketchUnavailableError(
+                "datasketches package not installed. Set {{SKETCH_IMPL}} to 'set' or "
+                "install the dependency."
             )
         self._sketch: UpdateThetaSketch = sketch or UpdateThetaSketch()
 
@@ -43,7 +44,7 @@ class ThetaSketch(DistinctSketch):
 
     def difference(self, other: DistinctSketch) -> ThetaSketch:
         if ThetaANotB is None:
-            raise ThetaSketchUnavailable("datasketches ThetaANotB unavailable.")
+            raise ThetaSketchUnavailableError("datasketches ThetaANotB unavailable.")
         if not isinstance(other, ThetaSketch):
             raise TypeError("ThetaSketch difference requires another ThetaSketch.")
         result = ThetaANotB()

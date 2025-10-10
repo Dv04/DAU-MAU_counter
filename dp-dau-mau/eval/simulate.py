@@ -1,3 +1,4 @@
+# ruff: noqa: B008
 """Synthetic workload generator for DAU/MAU evaluation."""
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ def main(
 
     rng = random.Random(seed)
     out.parent.mkdir(parents=True, exist_ok=True)
-    start_day = dt.date.today() - dt.timedelta(days=days)
+    start_day = dt.datetime.now(tz=dt.UTC).date() - dt.timedelta(days=days)
     with out.open("w", encoding="utf-8") as fp:
         for day_offset in range(days):
             day = start_day + dt.timedelta(days=day_offset)

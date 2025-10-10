@@ -1,3 +1,4 @@
+# ruff: noqa: B008
 """Adversarial workload generator that stresses deletion handling."""
 
 from __future__ import annotations
@@ -24,17 +25,23 @@ def main(
 ) -> None:
     rng = random.Random(seed)
     out.parent.mkdir(parents=True, exist_ok=True)
-    start_day = dt.date.today() - dt.timedelta(days=window)
+    start_day = dt.datetime.now(tz=dt.UTC).date() - dt.timedelta(days=window)
     with out.open("w", encoding="utf-8") as fp:
         for user_idx in range(users):
             user_id = f"adv-{user_idx}"
-            day = start_day
             for flip_idx in range(flips):
+                offset = rng.randint(0, max(window - 1, 0))
+                event_day = start_day + dt.timedelta(days=offset)
                 event = {
                     "user_id": user_id,
                     "op": "+" if flip_idx % 2 == 0 else "-",
-                    "day": (day + dt.timedelta(days=flip_idx % window)).isoformat(),
-                    "metadata": {"source": "adversarial", "flip": flip_idx},
+                    "day": event_day.isoformat(),
+                    "metadata": {
+                        "source": "adversarial",
+                        "flip": flip_idx,
+                        "window": window,
+                        "offset": offset,
+                    },
                 }
                 fp.write(json.dumps(event) + "\n")
 

@@ -1,3 +1,4 @@
+# ruff: noqa: B008
 """Plot evaluation outputs for reporting."""
 
 from __future__ import annotations

@@ -18,11 +18,11 @@ from .privacy_accountant import BudgetCaps, PrivacyAccountant
 from .sketches.base import SketchFactory
 from .sketches.hllpp_impl import HllppSketch
 from .sketches.set_impl import SetSketch
-from .sketches.theta_impl import ThetaSketch, ThetaSketchUnavailable
+from .sketches.theta_impl import ThetaSketch, ThetaSketchUnavailableError
 from .windows import WindowManager
 
 
-class BudgetExceeded(Exception):
+class BudgetExceededError(Exception):
     """Raised when attempting to exceed the allocated privacy budget."""
 
 
@@ -39,7 +39,8 @@ class EventRecord:
 
 def _seed_for(metric: str, day: dt.date, default_seed: int) -> int:
     digest = sha256(f"{metric}:{day.isoformat()}:{default_seed}".encode()).digest()
-    return int.from_bytes(digest[:8], "big", signed=False)
+    value = int.from_bytes(digest[:8], "big", signed=False)
+    return value & 0x7FFF_FFFF_FFFF_FFFF
 
 
 class PipelineManager:
@@ -74,7 +75,7 @@ class PipelineManager:
         builders["hllpp"] = lambda: HllppSketch()
         try:
             builders["theta"] = ThetaSketch
-        except ThetaSketchUnavailable:
+        except ThetaSketchUnavailableError:
             pass
         factory = SketchFactory(builders=builders, default_impl="set")
         if self.config.sketch.impl not in factory.builders:
@@ -137,7 +138,7 @@ class PipelineManager:
         delta = self.config.dp.delta if metric == "mau" else 0.0
         cap = self.budgets.dau if metric == "dau" else self.budgets.mau
         if not self.accountant.can_release(metric, epsilon, day, cap):
-            raise BudgetExceeded(f"{metric} budget exhausted for {day.isoformat()}")
+            raise BudgetExceededError(f"{metric} budget exhausted for {day.isoformat()}")
         seed = _seed_for(metric, day, self.config.dp.default_seed)
         rng = random.Random(seed)
         if delta > 0:

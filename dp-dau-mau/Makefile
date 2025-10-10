@@ -29,7 +29,7 @@ test: placeholder-check
 	pytest --cov=$(PACKAGE) --cov=service --maxfail=1
 
 run:
-	$(UVICORN) $(SERVICE_APP) --reload --host 0.0.0.0 --port 8000
+	PYTHONPATH=src $(UVICORN) --app-dir src $(SERVICE_APP) --reload --host 0.0.0.0 --port 8000
 
 eval:
 	$(PYTHON) eval/evaluate.py --out $(DATA_DIR)/experiments/$(EXPERIMENT_ID)

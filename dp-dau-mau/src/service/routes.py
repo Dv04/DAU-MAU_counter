@@ -6,9 +6,8 @@ import datetime as dt
 import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from dp_core.pipeline import EventRecord, PipelineManager
@@ -30,7 +29,7 @@ def get_config(request: Request):
 @dataclass
 class RouteStats:
     count: int = 0
-    durations_ms: List[float] = None  # type: ignore[assignment]
+    durations_ms: list[float] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         if self.durations_ms is None:
@@ -50,7 +49,7 @@ class RouteStats:
         return data[index]
 
 
-REQUEST_STATS: Dict[str, RouteStats] = defaultdict(RouteStats)
+REQUEST_STATS: dict[str, RouteStats] = defaultdict(RouteStats)
 
 
 def record_metrics(route: str, duration_ms: float) -> None:
@@ -86,8 +85,8 @@ async def post_event(
 @router.get("/dau/{day}", response_model=MetricResponse)
 async def get_dau(
     day: dt.date,
-    pipeline: PipelineManager = Depends(get_pipeline),
     request: Request,
+    pipeline: PipelineManager = Depends(get_pipeline),
     _: None = Depends(auth.require_api_key),
 ) -> MetricResponse:
     start = time.perf_counter()
@@ -103,9 +102,9 @@ async def get_dau(
 @router.get("/mau", response_model=MetricResponse)
 async def get_mau(
     end: dt.date,
-    window: Optional[int] = None,
-    pipeline: PipelineManager = Depends(get_pipeline),
     request: Request,
+    window: int | None = None,
+    pipeline: PipelineManager = Depends(get_pipeline),
     _: None = Depends(auth.require_api_key),
 ) -> MetricResponse:
     start = time.perf_counter()
@@ -120,7 +119,7 @@ async def get_mau(
 
 @router.get("/metrics")
 async def get_metrics() -> PlainTextResponse:
-    lines: List[str] = []
+    lines: list[str] = []
     for route, stats in REQUEST_STATS.items():
         lines.append(f'dp_requests_total{{route="{route}"}} {stats.count}')
         lines.append(f'dp_request_latency_ms_p50{{route="{route}"}} {stats.percentile(50):.3f}')

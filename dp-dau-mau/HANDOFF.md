@@ -77,3 +77,9 @@
 - [ ] Add streaming ingestion benchmark harness (locust / vegeta).
 - [ ] Harden notebook reproducibility with papermill automation.
 - [ ] Flesh out alerting integration in `service/auth.py`.
+
+## Recent Changes & Operational Notes
+- `make run` now invokes `uvicorn --app-dir src` so that `service.app` imports cleanly under the reloader. Always launch from the repository root and keep the process running in its own terminal tab.
+- All configuration values (privacy budgets, sketch choice, data paths) have defaults. Only export overrides when needed; README includes a single copy-and-paste command for convenience.
+- The placeholder auditor ignores `.env/` virtualenv contents to prevent third-party packages from polluting the ledger.
+- Differential privacy release seeds are masked to 63 bits before persisting to SQLite to avoid integer overflow errors.

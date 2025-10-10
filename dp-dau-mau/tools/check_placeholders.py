@@ -27,7 +27,15 @@ def collect_placeholders(paths: Iterable[Path]) -> set[str]:
 
 
 def repo_files(root: Path) -> Iterable[Path]:
-    excluded_dirs = {".git", ".ruff_cache", ".mypy_cache", ".pytest_cache", "__pycache__", ".venv"}
+    excluded_dirs = {
+        ".git",
+        ".ruff_cache",
+        ".mypy_cache",
+        ".pytest_cache",
+        "__pycache__",
+        ".venv",
+        ".env",
+    }
     for path in root.rglob("*"):
         if any(part in excluded_dirs for part in path.parts):
             continue
@@ -38,8 +46,8 @@ def parse_manifest(manifest: Path) -> set[str]:
     tokens: set[str] = set()
     try:
         text = manifest.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        raise SystemExit(f"Manifest not found: {manifest}")
+    except FileNotFoundError as err:
+        raise SystemExit(f"Manifest not found: {manifest}") from err
     row_pattern = re.compile(r"\|\s*(\{\{[A-Z0-9_]+\}\})\s*\|")
     for line in text.splitlines():
         match = row_pattern.match(line.strip())

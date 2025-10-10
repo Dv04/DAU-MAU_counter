@@ -5,10 +5,22 @@ Implement a differential-privacy aware turnstile streaming pipeline that reports
 ## Quickstart in 120 seconds
 1. `cd dp-dau-mau && python -m venv .venv && source .venv/bin/activate`
 2. `pip install -r requirements.txt`
-3. `export EPSILON_DAU={{EPSILON_DAU}} EPSILON_MAU={{EPSILON_MAU}} DELTA={{DELTA}} SKETCH_IMPL=set DATA_DIR={{DATA_DIR}} HASH_SALT_SECRET=$(python -c "import secrets,base64;print('b64:'+base64.b64encode(secrets.token_bytes(32)).decode())")`
-4. `make setup && make run`
-5. `curl -X POST http://127.0.0.1:8000/event -H "X-API-Key: {{API_KEY}}" -H "Content-Type: application/json" -d '{"events":[{"user_id":"alice","op":"+","day":"2025-10-09"}]}'`
-6. `curl http://127.0.0.1:8000/dau/2025-10-09`
+3. *(Optional)* Set overrides for privacy budgets and storage paths. If you skip this step, sensible defaults are loaded automatically. To customise, run a single command such as:
+
+   ```bash
+   export DATA_DIR="$PWD/.local-data" \
+          EPSILON_DAU=0.3 \
+          EPSILON_MAU=0.5 \
+          DELTA=1e-6 \
+          SKETCH_IMPL=set \
+          HASH_SALT_SECRET=$(python -c "import secrets, base64; print('b64:' + base64.b64encode(secrets.token_bytes(32)).decode())")
+   ```
+
+4. In a dedicated terminal tab, run `make run` and leave it running. This starts Uvicorn with `--app-dir src`.
+5. In a second terminal, send traffic: `curl -X POST http://127.0.0.1:8000/event -H "Content-Type: application/json" -d '{"events":[{"user_id":"alice","op":"+","day":"2025-10-09"}]}'`
+6. Query a release: `curl http://127.0.0.1:8000/dau/2025-10-09`
+
+To protect the API with a key, export `SERVICE_API_KEY=your-secret` before launching and append `-H "X-API-Key: $SERVICE_API_KEY"` to each curl command.
 
 ## Core Concepts
 - **Turnstile stream**: each record toggles membership with `op` ∈ {`+`, `-`}. Deletes trigger retroactive rebuilds via the erasure ledger.

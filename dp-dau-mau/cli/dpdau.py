@@ -1,3 +1,4 @@
+# ruff: noqa: B008
 """Command-line helpers for the DP DAU/MAU pipeline."""
 
 from __future__ import annotations

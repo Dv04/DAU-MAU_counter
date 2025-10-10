@@ -1,3 +1,4 @@
+# ruff: noqa: B008
 """Evaluation harness for sketch accuracy and DP noise."""
 
 from __future__ import annotations

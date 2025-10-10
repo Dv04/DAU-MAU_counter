@@ -23,6 +23,6 @@ repos:
     hooks:
       - id: placeholder-ledger
         name: placeholder-ledger
-        entry: python tools/check_placeholders.py --root . --manifest Placeholders.md
+        entry: python dp-dau-mau/tools/check_placeholders.py --root dp-dau-mau --manifest dp-dau-mau/Placeholders.md
         language: system
         pass_filenames: false
