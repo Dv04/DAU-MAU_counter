@@ -4,8 +4,12 @@ PACKAGE = dp_core
 SERVICE_APP = service.app:app
 DATA_DIR ?= {{DATA_DIR}}
 EXPERIMENT_ID ?= {{EXPERIMENT_ID}}
+LOAD_HOST ?= http://127.0.0.1:8000
+LOAD_USERS ?= 500
+LOAD_SPAWN ?= 100
+LOAD_RUNTIME ?= 2m
 
-.PHONY: setup fmt lint test run eval plots backup-ledger placeholder-check precommit install-dev
+.PHONY: setup fmt lint test run eval plots backup-ledger placeholder-check precommit install-dev load-test
 
 setup: install-dev precommit placeholder-check
 	@mkdir -p $(DATA_DIR)/ledgers $(DATA_DIR)/streams $(DATA_DIR)/plots/$(EXPERIMENT_ID) $(DATA_DIR)/experiments/$(EXPERIMENT_ID)
@@ -27,6 +31,7 @@ lint:
 
 test: placeholder-check
 	pytest --cov=$(PACKAGE) --cov=service --maxfail=1
+	$(PYTHON) tools/export_budget_report.py --sample-days 3 --daily-users 64
 
 run:
 	PYTHONPATH=src $(UVICORN) --app-dir src $(SERVICE_APP) --reload --host 0.0.0.0 --port 8000
@@ -43,3 +48,6 @@ placeholder-check:
 backup-ledger:
 	@mkdir -p $(DATA_DIR)/backups
 	@cp $(DATA_DIR)/ledgers/ledger.sqlite $(DATA_DIR)/backups/ledger-$$(date +%Y%m%d).sqlite
+
+load-test:
+	LOCUST_LOCUSTFILE=load/locustfile.py locust --headless --host $(LOAD_HOST) --users $(LOAD_USERS) --spawn-rate $(LOAD_SPAWN) --run-time $(LOAD_RUNTIME)

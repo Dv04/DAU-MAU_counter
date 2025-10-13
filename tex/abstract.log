@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  9 OCT 2025 16:45
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  11 OCT 2025 16:20
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -107,12 +107,12 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <14.4> on input line 10.
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <7> on input line 10.
-LaTeX Font Info:    Trying to load font information for OMS+cmtt on input line 13.
-LaTeX Font Info:    No file OMScmtt.fd. on input line 13.
+LaTeX Font Info:    Trying to load font information for OMS+cmtt on input line 15.
+LaTeX Font Info:    No file OMScmtt.fd. on input line 15.
 
 LaTeX Font Warning: Font shape `OMS/cmtt/m/n' undefined
 (Font)              using `OMS/cmsy/m/n' instead
-(Font)              for symbol `textbraceleft' on input line 13.
+(Font)              for symbol `textbraceleft' on input line 15.
 
 
 
@@ -129,15 +129,15 @@ LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  ) 
 Here is how much of TeX's memory you used:
- 1114 strings out of 473190
- 19140 string characters out of 5715801
+ 1113 strings out of 473190
+ 19131 string characters out of 5715801
  418373 words of memory out of 5000000
- 24422 multiletter control sequences out of 15000+600000
+ 24421 multiletter control sequences out of 15000+600000
  561727 words of font info for 46 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 57i,6n,65p,1119b,224s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,6n,65p,543b,224s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb>
-Output written on abstract.pdf (1 page, 93385 bytes).
+Output written on abstract.pdf (1 page, 92133 bytes).
 PDF statistics:
  43 PDF objects out of 1000 (max. 8388607)
  25 compressed objects within 1 object stream

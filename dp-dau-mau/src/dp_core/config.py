@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import json
+import os
 import re
 import secrets
 from pathlib import Path
@@ -32,6 +34,44 @@ def _resolve_int(value: object, placeholder: str, default: int) -> int:
     return int(value)
 
 
+def _resolve_float_sequence(
+    value: object,
+    placeholder: str,
+    default: tuple[float, ...],
+) -> tuple[float, ...]:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        text = value.strip()
+        if PLACEHOLDER_PATTERN.fullmatch(text):
+            return default
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            items = [item.strip() for item in text.split(",") if item.strip()]
+            try:
+                return tuple(float(item) for item in items)
+            except ValueError as convert_exc:  # pragma: no cover - defensive branch
+                raise ValueError(
+                    f"{placeholder} must be a JSON array or comma-separated list of numbers"
+                ) from convert_exc
+        else:
+            if isinstance(parsed, (list, tuple)):
+                try:
+                    return tuple(float(item) for item in parsed)
+                except ValueError as convert_exc:
+                    raise ValueError(f"{placeholder} must contain numeric values") from convert_exc
+            raise ValueError(
+                f"{placeholder} must be a JSON array or comma-separated list of numbers"
+            )
+    if isinstance(value, (list, tuple, set)):
+        try:
+            return tuple(float(item) for item in value)
+        except ValueError as exc:  # pragma: no cover - defensive branch
+            raise ValueError(f"{placeholder} must contain numeric values") from exc
+    raise TypeError(f"{placeholder} must be iterable of numeric values or a string")
+
+
 def _resolve_string(value: object, placeholder: str, default: str | None = None) -> str:
     if value is None:
         if default is not None:
@@ -55,10 +95,12 @@ class DPSettings(BaseModel):
     epsilon_dau: float = Field(default=0.3)
     epsilon_mau: float = Field(default=0.5)
     delta: float = Field(default=1e-6)
+    advanced_delta: float = Field(default=1e-7)
     w_bound: int = Field(default=2)
     dau_budget_total: float = Field(default=3.0)
     mau_budget_total: float = Field(default=3.5)
     default_seed: int = Field(default=20251009)
+    rdp_orders: tuple[float, ...] = Field(default=(2.0, 4.0, 8.0, 16.0, 32.0))
 
     @field_validator("epsilon_dau", mode="before")
     def _v_eps_dau(cls, v: object) -> float:
@@ -71,6 +113,13 @@ class DPSettings(BaseModel):
     @field_validator("delta", mode="before")
     def _v_delta(cls, v: object) -> float:
         return _resolve_numeric(v, "{{DELTA}}", 1e-6)
+
+    @field_validator("advanced_delta", mode="before")
+    def _v_advanced_delta(cls, v: object) -> float:
+        value = _resolve_numeric(v, "{{ADVANCED_DELTA}}", 1e-7)
+        if value <= 0 or value >= 1:
+            raise ValueError("{{ADVANCED_DELTA}} must satisfy 0 < delta < 1.")
+        return value
 
     @field_validator("w_bound", mode="before")
     def _v_w_bound(cls, v: object) -> int:
@@ -87,6 +136,14 @@ class DPSettings(BaseModel):
     @field_validator("default_seed", mode="before")
     def _v_default_seed(cls, v: object) -> int:
         return _resolve_int(v, "{{DEFAULT_SEED}}", 20251009)
+
+    @field_validator("rdp_orders", mode="before")
+    def _v_rdp_orders(cls, v: object) -> tuple[float, ...]:
+        orders = _resolve_float_sequence(v, "{{RDP_ORDERS}}", (2.0, 4.0, 8.0, 16.0, 32.0))
+        filtered = tuple(order for order in orders if order > 1.0)
+        if not filtered:
+            raise ValueError("{{RDP_ORDERS}} must contain at least one value greater than 1.")
+        return filtered
 
 
 class SketchSettings(BaseModel):
@@ -133,7 +190,7 @@ class StorageSettings(BaseModel):
 class SecuritySettings(BaseModel):
     hash_salt_secret: str = Field(default="{{HASH_SALT_SECRET}}")
     hash_salt_rotation_days: int = Field(default=30)
-    api_key: str | None = Field(default=None)
+    api_key: str | None = Field(default="{{SERVICE_API_KEY}}")
     admin_email: str | None = Field(default="{{ADMIN_EMAIL}}")
     timezone: str = Field(default="{{TIMEZONE}}")
 
@@ -198,4 +255,50 @@ class AppConfig(BaseModel):
 
     @classmethod
     def from_env(cls) -> AppConfig:
-        return cls()
+        env = os.environ
+        dp_kwargs = {
+            "epsilon_dau": env.get("EPSILON_DAU"),
+            "epsilon_mau": env.get("EPSILON_MAU"),
+            "delta": env.get("DELTA"),
+            "advanced_delta": env.get("ADVANCED_DELTA"),
+            "w_bound": env.get("W_BOUND"),
+            "dau_budget_total": env.get("DAU_BUDGET_TOTAL"),
+            "mau_budget_total": env.get("MAU_BUDGET_TOTAL"),
+            "default_seed": env.get("DEFAULT_SEED"),
+            "rdp_orders": env.get("RDP_ORDERS"),
+        }
+        sketch_kwargs = {
+            "impl": env.get("SKETCH_IMPL"),
+            "mau_window_days": env.get("MAU_WINDOW_DAYS"),
+            "hll_rebuild_days_buffer": env.get("HLL_REBUILD_DAYS_BUFFER"),
+        }
+        storage_kwargs = {
+            "data_dir": env.get("DATA_DIR"),
+            "experiment_id": env.get("EXPERIMENT_ID"),
+            "example_dataset_path": env.get("EXAMPLE_DATASET_PATH"),
+        }
+        security_kwargs = {
+            "hash_salt_secret": env.get("HASH_SALT_SECRET"),
+            "hash_salt_rotation_days": env.get("HASH_SALT_ROTATION_DAYS"),
+            "api_key": env.get("SERVICE_API_KEY"),
+            "admin_email": env.get("ADMIN_EMAIL"),
+            "timezone": env.get("TIMEZONE"),
+        }
+        service_kwargs = {
+            "host": env.get("SERVICE_HOST"),
+            "port": env.get("SERVICE_PORT"),
+            "database_url": env.get("SERVICE_DATABASE_URL"),
+            "kafka_topic": env.get("KAFKA_TOPIC"),
+        }
+        payload: dict[str, object] = {}
+        if any(value is not None for value in dp_kwargs.values()):
+            payload["dp"] = {k: v for k, v in dp_kwargs.items() if v is not None}
+        if any(value is not None for value in sketch_kwargs.values()):
+            payload["sketch"] = {k: v for k, v in sketch_kwargs.items() if v is not None}
+        if any(value is not None for value in storage_kwargs.values()):
+            payload["storage"] = {k: v for k, v in storage_kwargs.items() if v is not None}
+        if any(value is not None for value in security_kwargs.values()):
+            payload["security"] = {k: v for k, v in security_kwargs.items() if v is not None}
+        if any(value is not None for value in service_kwargs.values()):
+            payload["service"] = {k: v for k, v in service_kwargs.items() if v is not None}
+        return cls(**payload)

@@ -38,6 +38,19 @@ class EventIngestionRequest(BaseModel):
         return self
 
 
+class BudgetSummary(BaseModel):
+    epsilon_cap: float
+    epsilon_spent: float
+    epsilon_remaining: float
+    delta: float
+    best_rdp_epsilon: float | None = None
+    best_rdp_order: float | None = None
+    rdp_curve: dict[float, float] = Field(default_factory=dict)
+    advanced_epsilon: float | None = None
+    advanced_delta: float | None = None
+    release_count: int = 0
+
+
 class MetricResponse(BaseModel):
     day: str
     estimate: float
@@ -48,9 +61,15 @@ class MetricResponse(BaseModel):
     mechanism: str
     sketch_impl: str
     budget_remaining: float
+    budget: BudgetSummary
     version: str
     exact_value: float | None = None
     window_days: int | None = None
+
+
+class BudgetResponse(BudgetSummary):
+    metric: str
+    period: str
 
 
 class HealthResponse(BaseModel):

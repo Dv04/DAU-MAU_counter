@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -166,6 +167,7 @@ class PipelineManager:
             mechanism=result.mechanism,
             seed=seed,
         )
+        self._log_rdp_release(metric, day, result)
         return result
 
     def get_daily_release(self, day: dt.date) -> dict[str, Any]:
@@ -175,7 +177,14 @@ class PipelineManager:
         base_value = float(len(keys))
         sensitivity = float(min(self.config.dp.w_bound, 1))
         dp_result = self._release("dau", day, base_value, sensitivity)
-        budget_remaining = self.accountant.remaining_budget("dau", day, self.budgets.dau)
+        budget = self.accountant.budget_snapshot(
+            "dau",
+            day,
+            self.budgets.dau,
+            0.0,
+            self.config.dp.rdp_orders,
+            self.config.dp.advanced_delta,
+        )
         return {
             "day": day_str,
             "estimate": dp_result.noisy_value,
@@ -185,7 +194,8 @@ class PipelineManager:
             "delta": dp_result.delta,
             "mechanism": dp_result.mechanism,
             "sketch_impl": self.config.sketch.impl,
-            "budget_remaining": budget_remaining,
+            "budget_remaining": budget.epsilon_remaining,
+            "budget": budget.as_dict(),
             "exact_value": base_value,
         }
 
@@ -197,7 +207,14 @@ class PipelineManager:
         base_value = float(value)
         sensitivity = float(self.config.dp.w_bound)
         dp_result = self._release("mau", end_day, base_value, sensitivity)
-        budget_remaining = self.accountant.remaining_budget("mau", end_day, self.budgets.mau)
+        budget = self.accountant.budget_snapshot(
+            "mau",
+            end_day,
+            self.budgets.mau,
+            self.config.dp.delta,
+            self.config.dp.rdp_orders,
+            self.config.dp.advanced_delta,
+        )
         return {
             "day": end_day_str,
             "window_days": window,
@@ -208,9 +225,53 @@ class PipelineManager:
             "delta": dp_result.delta,
             "mechanism": dp_result.mechanism,
             "sketch_impl": self.config.sketch.impl,
-            "budget_remaining": budget_remaining,
+            "budget_remaining": budget.epsilon_remaining,
+            "budget": budget.as_dict(),
             "exact_value": base_value,
         }
 
     def reset_budget(self, metric: str, month: str) -> None:
         self.accountant.reset_month(metric, month)
+
+    def get_budget_summary(self, metric: str, day: dt.date) -> dict[str, Any]:
+        metric = metric.lower()
+        if metric not in {"dau", "mau"}:
+            raise ValueError("metric must be 'dau' or 'mau'")
+        cap = self.budgets.dau if metric == "dau" else self.budgets.mau
+        delta = 0.0 if metric == "dau" else self.config.dp.delta
+        snapshot = self.accountant.budget_snapshot(
+            metric,
+            day,
+            cap,
+            delta,
+            self.config.dp.rdp_orders,
+            self.config.dp.advanced_delta,
+        )
+        return snapshot.as_dict()
+
+    def _log_rdp_release(self, metric: str, day: dt.date, result: MechanismResult) -> None:
+        orders = getattr(self.config.dp, "rdp_orders", ())
+        if not orders:
+            return
+        if result.mechanism == "gaussian":
+            if result.delta <= 0:
+                return
+            sigma = (
+                math.sqrt(2 * math.log(1.25 / result.delta))
+                * result.sensitivity
+                / max(result.epsilon, 1e-12)
+            )
+            if sigma <= 0:
+                return
+            variance = sigma * sigma
+            for order in orders:
+                if order <= 1:
+                    continue
+                rdp = (order * (result.sensitivity**2)) / (2 * variance)
+                self.accountant.log_rdp(metric, day, float(order), rdp)
+        else:
+            for order in orders:
+                if order <= 1:
+                    continue
+                rdp = (order / (order - 1.0)) * result.epsilon
+                self.accountant.log_rdp(metric, day, float(order), rdp)

@@ -35,6 +35,7 @@ dev = [
 ]
 theta = ["datasketches>=4.0,<5.0"]
 hllpp = ["datasketch>=1.6,<2.0"]
+load = ["locust>=2.24,<3.0"]
 
 [project.scripts]
 dpdau = "cli.dpdau:app"

@@ -17,6 +17,7 @@ class MechanismResult:
     delta: float
     confidence_interval: tuple[float, float]
     seed: int
+    sensitivity: float
 
 
 def laplace_mechanism(
@@ -42,6 +43,7 @@ def laplace_mechanism(
         delta=0.0,
         confidence_interval=ci,
         seed=seed,
+        sensitivity=sensitivity,
     )
 
 
@@ -69,6 +71,7 @@ def gaussian_mechanism(
         delta=delta,
         confidence_interval=ci,
         seed=seed,
+        sensitivity=sensitivity,
     )
 
 

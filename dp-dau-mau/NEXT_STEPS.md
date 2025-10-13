@@ -1,21 +1,21 @@
 # Next Steps
 
 ## Immediate
-- Exercise the MAU endpoint with multiple days of synthetic data (`eval/simulate.py`) to confirm delete handling and rolling windows behave as expected.
-- Add end-to-end tests that ingest a small stream via the FastAPI test client and assert DAU/MAU responses include the documented keys.
-- Wire `SERVICE_API_KEY` into the curl examples once a real key management scheme is chosen; update README accordingly.
+- Update CI workflow (GitHub Actions or similar) to archive both `coverage.xml` and `{{DATA_DIR}}/reports/budget-snapshot.json` produced by `make test`.
+- Spot-check `/budget/{metric}` responses and the generated snapshot file to confirm Rényi curves match expectations for the current month.
+- Capture CLI smoke run: `dpdau generate-synthetic --days 14 ...` followed by `dpdau ingest` to ensure the CSV/JSONL loaders behave in your environment; keep resulting dataset under `{{DATA_DIR}}/streams/`.
 
 ## Short Term Enhancements
-- Implement CLI commands for loading CSV/JSONL batches directly from `{{DATA_DIR}}/streams/` and querying MAU windows.
-- Flesh out `privacy_accountant.log_rdp` with a basic Rényi accountant and expose remaining budget in the API.
-- Add coverage reporting to CI artifacts (currently only generated locally).
-- Introduce a Prometheus counter for failed requests and HTTP status breakdown.
+- Add CI task to fail if `SERVICE_API_KEY` remains unset in integration environments; document secret provisioning in the runbook.
+- Introduce a Prometheus counter for failed requests and HTTP status breakdown, then add alert thresholds for repeated 5xx bursts.
+- Extend observability by storing the last N `/budget` responses in `{{DATA_DIR}}/reports/` during smoke tests for historical comparison.
 
 ## Longer Term
 - Prototype Theta and HLL++ sketches by adding optional extras (`pip install .[theta]`, `[hllpp]`) and gating tests accordingly.
 - Extend the ledger to support Postgres by honoring `{{SERVICE_DATABASE_URL}}` and layering SQLAlchemy migrations via Alembic.
 - Build a minimal gRPC facade (see HANDOFF.md) to validate transport-agnostic pipeline usage.
 - Integrate a tree aggregation mechanism (handout section) for continual release with improved privacy amplification.
+- Investigate tighter accountant techniques (e.g., privacy loss distributions) if the advanced composition bounds prove too loose for production SLOs.
 
 ## Operational Follow-ups
 - Create `docs/runbook.md` capturing salt rotation procedures, DP budget reset process, and failure recovery steps; link from HANDOFF.

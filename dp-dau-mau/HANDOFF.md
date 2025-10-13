@@ -5,7 +5,7 @@
 - **Pipeline Core (`src/dp_core/pipeline.py`)**: orchestrates hashing, sketch updates, erasure replay, DP release, and ledger persistence.
 - **Sketch Implementations (`src/dp_core/sketches/`)**: `set_impl` for exact counting; optional `theta_impl`/`hllpp_impl` for approximations – import guarded.
 - **Ledger (`src/dp_core/ledger.py`)**: SQLite-backed tables for activity, erasures, and DP budgets located at `{{DATA_DIR}}/ledgers/ledger.sqlite`.
-- **Privacy Accountant (`src/dp_core/privacy_accountant.py`)**: tracks ε/δ spend, enforces hard caps {{DAU_BUDGET_TOTAL}}/{{MAU_BUDGET_TOTAL}}.
+- **Privacy Accountant (`src/dp_core/privacy_accountant.py`)**: tracks ε/δ spend, aggregates Rényi orders {{RDP_ORDERS}}, and enforces hard caps {{DAU_BUDGET_TOTAL}}/{{MAU_BUDGET_TOTAL}}.
 - **Evaluation Suite (`eval/`)**: synthetic generators, adversarial workloads, benchmarking utilities, plots, and notebook.
 - **CLI (`cli/dpdau.py`)**: direct ingest/query interface for batch experimentation.
 
@@ -30,9 +30,9 @@
 
 ## Privacy Budgeting Rules
 - Daily releases per metric cost `epsilon_metric` ({{EPSILON_DAU}}, {{EPSILON_MAU}}).
-- `LedgerAccountant.can_release(metric, epsilon)` checks both per-metric monthly cap and optional global budget.
-- Use `PipelineManager.force_release(..., override=True)` only for backfills; log manual approvals in `ledger.manual_overrides`.
-- RDP hook: `privacy_accountant.log_rdp(metric, order, epsilon)` is a stub – extend to integrate with advanced accountants.
+- `PrivacyAccountant.budget_snapshot(metric, day, cap, delta, {{RDP_ORDERS}}, {{ADVANCED_DELTA}})` returns naive spend, remaining headroom, best Rényi-derived `(ε,δ)`, and an advanced-composition bound `(ε_adv, δ_total)`.
+- `/budget/{metric}?day=YYYY-MM-DD` surfaces the same snapshot for operators; CLI commands `dpdau dau` / `dpdau mau` embed the budget block for quick checks.
+- Use `PipelineManager.reset_budget` (exposed via `dpdau reset-budget`) to wipe a monthly ledger after approvals; log manual overrides in your ops runbook.
 
 ## Salt Rotation
 - Secrets stored in `.env` as `HASH_SALT_SECRET={{HASH_SALT_SECRET}}`.
@@ -46,13 +46,24 @@
 - Budget overspend triggers HTTP 429 with `budget_remaining=0`; resume after monthly reset via `dpdau reset-budget --month 2025-11`.
 - Ensure deletes are re-applied after restore by replaying `erasure_log` with `pending=1`.
 
+## Observability & Alerts
+- `make test` automatically drops `{{DATA_DIR}}/reports/budget-snapshot.json` (via `tools/export_budget_report.py`) for CI uploads; attach alongside `coverage.xml` so reviewers can inspect ε spend per build.
+- Monitor `/metrics` (`dp_requests_total`, `dp_request_latency_ms_p50`, `dp_request_latency_ms_p99`) plus FastAPI status codes. Fire a Sev-2 alert when there are ≥10 `5xx` responses in 5 minutes or when p99 latency exceeds 1 s for 15 minutes.
+- During incidents, capture both the Prometheus scrape and `curl /budget/{metric}?day=YYYY-MM-DD` outputs to validate budget headroom before re-running backfills.
+
 ## Test Dataset Generation
 - Baseline synthetic set: `python eval/simulate.py --users 5000 --days 45 --p-active 0.18 --delete-rate 0.02 --seed {{DEFAULT_SEED}} --out {{DATA_DIR}}/streams/smoke.jsonl`.
 - Adversarial churn: `python eval/adversarial.py --users 200 --window {{MAU_WINDOW_DAYS}} --flips {{W_BOUND}} --out {{DATA_DIR}}/streams/adversarial.jsonl`.
+- Quick smoke dataset: `dpdau generate-synthetic --days 14 --daily-users 200 --delete-rate 0.15 --out {{DATA_DIR}}/streams/smoke.jsonl`.
 - Store metadata in `{{DATA_DIR}}/streams/README.md` (auto-generated stub).
 
+## Load Testing
+- Locust harness lives in `load/locustfile.py`; install extras via `pip install .[load]`.
+- Run `SERVICE_API_KEY={{SERVICE_API_KEY}} make load-test LOAD_USERS=2000 LOAD_SPAWN=500 LOAD_RUNTIME=5m` to simulate 10–50k events/sec.
+- Collect Locust CSV/HTML artifacts (pass `--csv`/`--html` flags via `LOCUST_OPTS`) and correlate with `/metrics` for latency regression analysis.
+
 ## Security & Configuration Tips
-- API key authentication optional; enable by setting `SERVICE_API_KEY={{API_KEY}}`.
+- API key authentication optional; enable by setting `SERVICE_API_KEY={{SERVICE_API_KEY}}`.
 - Admin alerts routed via `{{ADMIN_EMAIL}}` (use SMTP integration stub `service/auth.py`).
 - SQLite connections operate with WAL mode; ensure `{{DATA_DIR}}` disk encrypted.
 - Disable approximate sketches in regulated contexts by setting `{{SKETCH_IMPL}}=set`.
@@ -72,7 +83,7 @@
 - Document state snapshot strategy in `docs/tree-aggregation.md`.
 
 ## Known Gaps & TODOs
-- [ ] Implement full RDP accountant and advanced composition support.
+- [ ] Introduce advanced composition or moments accountant to complement the fixed {{RDP_ORDERS}} set.
 - [ ] Optimize HLL++ rebuild by caching bucketed per-day hashes.
 - [ ] Add streaming ingestion benchmark harness (locust / vegeta).
 - [ ] Harden notebook reproducibility with papermill automation.

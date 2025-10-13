@@ -1,9 +1,14 @@
 import base64
 import os
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+
+SRC_ROOT = Path(__file__).resolve().parent.parent / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 
 @pytest.fixture(autouse=True)
@@ -21,4 +26,6 @@ def configure_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[N
     monkeypatch.setenv("DAU_BUDGET_TOTAL", "3.0")
     monkeypatch.setenv("MAU_BUDGET_TOTAL", "3.5")
     monkeypatch.setenv("TIMEZONE", "UTC")
+    monkeypatch.setenv("SERVICE_API_KEY", "test-key")
+    monkeypatch.setenv("RDP_ORDERS", "2,4")
     yield

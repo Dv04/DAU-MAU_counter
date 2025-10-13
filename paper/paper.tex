@@ -6,11 +6,12 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage[numbers,sort&compress]{natbib}
-\usepackage{hyperref}
 \usepackage{url}
+\usepackage[strings]{underscore}
+\usepackage{hyperref}
 
-\title{Erasure-Compliant, Differentially Private Distinct Counting for CCTV Analytics:\\
-An Edge-to-Cloud System with Flippancy-Aware Guarantees}
+\title{Erasure-Compliant, Differentially Private Distinct Counting under Continual Observation:\\
+A Flippancy-Aware System with Edge-to-Cloud Deployment and a CCTV Case Study}
 \author{Dev Sanghvi \\ Rice University}
 \date{{\small Draft: {{PAPER_DATE}}}}
 
@@ -18,122 +19,134 @@ An Edge-to-Cloud System with Flippancy-Aware Guarantees}
 \maketitle
 
 \begin{abstract}
-CCTV and video-AI platforms increasingly rely on aggregate analytics---e.g., daily/weekly/monthly distinct visitors by camera or zone---to inform safety, staffing, retail operations, and city planning. These analytics must \emph{both} protect subjects' privacy and honor deletion requests (GDPR/CCPA). We present an erasure-compliant, differentially private (DP) pipeline for \emph{distinct} counting (DAU/MAU-style occupancy) under \emph{continual release} and \emph{turnstile} streaming (insertions and deletions). The system combines: (i) \textbf{edge pseudonymization} (daily salt hashing of per-subject signals); (ii) \textbf{Theta sketches} with union and \emph{A-not-B} for efficient per-day and rolling-window distinct counting and deletions; and (iii) a \textbf{flippancy-aware} DP release mechanism calibrated for item-level privacy under continual observation. We implement a working prototype with REST APIs, a privacy accountant, and synthetic CCTV workloads. Results show that at $\epsilon={{EPSILON_DAU}}$ (daily) and $\epsilon={{EPSILON_MAU}}$ (monthly), additive error is within {{ERROR_PCT}}{\%} for city-scale settings, and ingestion sustains {{THROUGHPUT}} events/s on a commodity machine (placeholders). We discuss operational deletion replay, privacy budgeting, and sketch choices (Theta vs. HLL++ rebuilds). This work provides a practical recipe to deliver privacy-preserving, erasure-aware CCTV analytics from edge to cloud while aligning with modern DP guidance.
+Distinct-count analytics (e.g., DAU/MAU-style metrics) are central to product analytics, IoT telemetry, ads reach, finance risk signals, and more. These settings increasingly require \emph{both} meaningful privacy guarantees and the ability to honor erasure requests (GDPR/CCPA). We present an erasure-compliant, differentially private (DP) pipeline for \emph{distinct} counting in \emph{turnstile} streams (insertions and deletions) under \emph{continual release}. The system combines: (i) \textbf{pseudonymization} with rotating salts; (ii) \textbf{Theta sketches} with union and \emph{A-not-B} for efficient per-period and rolling-window distinct counting with deletions; and (iii) a \textbf{flippancy-aware} DP release mechanism calibrated for item-level privacy over time. We implement a working prototype with REST APIs, a privacy accountant, and synthetic workloads. Results show that at $\epsilon={{EPSILON_DAU}}$ (daily) and $\epsilon={{EPSILON_MAU}}$ (monthly), additive error is within {{ERROR_PCT}}{\%} and ingestion sustains {{THROUGHPUT}} events/s on a commodity machine (placeholders). We discuss budget governance, deletion replay, and sketch choices (Theta vs.\ HLL++ rebuilds). To illustrate deployability, we include a brief \emph{CCTV} case study as one application among many, without narrowing the generality of the approach.
 \end{abstract}
 
 \section{Introduction}
-CCTV deployments across retail, campuses, and smart cities increasingly require aggregate metrics such as \emph{distinct visitors per day} (DAU) and per rolling window (e.g., 30-day MAU). These metrics guide staffing, utilization, and safety operations, while customers and regulators demand that systems avoid raw identities and support the \emph{right to erasure} (GDPR Art.~17) \cite{GDPR}. 
+Distinct-count metrics such as daily or rolling-window ``active entities'' appear across domains: web/mobile user analytics, IoT fleet monitoring, ads reach, financial risk telemetry, and physical-space analytics. These analytics are increasingly subject to privacy expectations and erasure laws (e.g., GDPR Art.~17) \cite{GDPR}. Releasing counts continually (e.g., daily) raises composition concerns, and supporting deletions turns the problem into a \emph{turnstile} stream.
 
-A natural tension arises: continual DAU/MAU releases can accumulate privacy leakage; identity-bearing logs complicate compliance and risk. Differential Privacy (DP) \cite{Dwork2006} provides a robust substrate: adding calibrated noise bounds an individual's influence. However, the CCTV setting adds two complications: (1) \emph{continual observation}---releasing daily aggregates over long horizons with composition; and (2) \emph{turnstile} updates---insertions and \emph{deletions} when subjects invoke erasure. Recent theory addresses distinct counting with deletions under continual observation via the \emph{flippancy} parameter $w$---the maximum number of presence/absence flips per subject---achieving error $\tilde{O}(\sqrt{w})$ at item-level DP and proving lower bounds for event-level DP \cite{Flippancy2023}.
+Differential Privacy (DP) \cite{Dwork2006} bounds any single subject's influence by adding calibrated noise. Recent theoretical progress addresses \emph{distinct counting with deletions} under continual observation via the \emph{flippancy} parameter $w$---the maximum number of presence/absence flips per subject---achieving error $\tilde{O}(\sqrt{w})$ at item-level DP and proving tight lower bounds for event-level DP \cite{Flippancy2023}.
 
-We contribute a practical, end-to-end pipeline for CCTV analytics that is \emph{erasure-compliant} and \emph{differentially private}:
+We contribute a practical, end-to-end pipeline for erasure-compliant, DP \emph{distinct} analytics that is domain-agnostic:
+
 \begin{itemize}
-    \item \textbf{Edge pseudonymization.} On camera/NVR, transform short-lived subject signals (e.g., track embeddings or plate strings) into \emph{daily salted hashes}; retain no raw identities.
-    \item \textbf{Sketch-based distinct counting.} Use \emph{Theta} sketches for per-day distincts and rolling-window unions; support deletions via \emph{A-not-B}. Contrast with HLL++ (merge-only; no native delete) \cite{Flajolet2007,DataSketches,DataSketchesANotB}.
-    \item \textbf{Flippancy-aware DP releases.} Daily DAU and 30-day MAU with Laplace/Gaussian noise scaled for item-level DP under continual release; privacy accountant tracks budget and deterministic per-day noise prevents query averaging \cite{Dwork2006,Rogers2020}.
+    \item \textbf{Pseudonymization with rotating salts.} Transform short-lived identifiers (e.g., app/device IDs, IoT sensor tokens) into \emph{period-scoped salted hashes}; retain no raw identities.
+    \item \textbf{Sketch-based distinct counting.} Use \emph{Theta} sketches for per-period distincts and rolling-window unions; support deletions via \emph{A-not-B}. Contrast with HLL++ (merge-only; no native delete) \cite{Flajolet2007,DataSketches,DataSketchesANotB}.
+    \item \textbf{Flippancy-aware DP releases.} Daily distincts and $W$-day MAW (monthly active whatever) with Laplace/Gaussian noise scaled for item-level DP; a privacy accountant tracks composition; deterministic per-period noise prevents query averaging \cite{Dwork2006,Rogers2020}.
 \end{itemize}
 
-We implement a prototype with a REST service, a budget ledger, and synthetic CCTV workloads. Placeholders indicate where empirical figures slot in. The design generalizes to multi-tenant cloud analytics and complements video-DP systems such as VideoDP/Privid that target frame-level queries \cite{VideoDP2020,Privid2022} by focusing on \emph{distinct} telemetry.
+We implement a prototype with a REST service, a budget ledger, and synthetic workloads. Placeholders indicate where figures slot in. The design generalizes across domains; we include a short \emph{CCTV case study} to demonstrate deployment in a high-sensitivity setting while keeping the paper's contribution general.
 
 \paragraph{Contributions.}
-(1) A deployment-ready \emph{edge$\to$cloud} recipe for erasure-aware DP distinct counting in CCTV; (2) a sketch layer with \emph{A-not-B} to operationalize deletions; (3) a continual-release DP mechanism and budget service tuned to flippancy; (4) an evaluation plan and operational guidance for compliance-ready rollouts.
+(1) A deployment-ready \emph{edge$\to$cloud} recipe for erasure-aware DP distinct counting across domains; (2) a sketch layer with \emph{A-not-B} to operationalize deletions; (3) a continual-release DP mechanism and budget service tuned to flippancy; (4) an evaluation plan and operational guidance for compliance-ready rollouts; (5) a brief case study instantiation in CCTV.
 
 \section{Background and Related Work}
 \paragraph{Differential Privacy and composition.}
-DP bounds the change in output distribution due to any single subject \cite{Dwork2006}. Repeated releases compose: in basic composition, $\epsilon$ values add across days; advanced analyses (e.g., R\'enyi DP) can tighten bounds. Deterministic per-query/day noise seeds prevent adversarial re-query averaging \cite{Rogers2020}. NIST SP~800-226 provides reporting guidance for DP claims and audits \cite{NIST800226}.
+DP bounds output distribution changes from any single subject \cite{Dwork2006}. Repeated releases compose; basic composition sums $\epsilon$, while advanced analyses (e.g., R\'enyi DP) tighten bounds. Deterministic per-query/per-period noise seeds prevent adversarial re-query averaging \cite{Rogers2020}. NIST SP~800-226 offers guidance for documenting DP claims \cite{NIST800226}.
 
 \paragraph{Turnstile distinct counting with deletions.}
-Under continual observation and deletions, event-level DP faces strong lower bounds; \emph{flippancy} $w$ enables item-level DP with additive error $\tilde{O}(\sqrt{w})$ \cite{Flippancy2023}. CCTV workloads naturally bound $w$ by coalescing to one presence per subject per day.
+Under continual observation with deletions, event-level DP faces strong lower bounds; \emph{flippancy} $w$ enables item-level DP with additive error $\tilde{O}(\sqrt{w})$ \cite{Flippancy2023}. Many telemetry workloads naturally bound $w$ via coalescing (e.g., one presence per subject per period).
 
 \paragraph{Distinct sketches.}
-HyperLogLog (HLL/HLL++) estimates distincts with small memory but is \emph{append-only} (no deletions) \cite{Flajolet2007}. Theta (KMV) sketches support \emph{union}, \emph{intersection}, and crucially \emph{A-not-B} (set difference) \cite{Dasgupta2016,DataSketches,DataSketchesANotB}. For large sets, order-invariant cardinality estimators exhibit inherent DP-like behavior, though we still add explicit DP noise \cite{Dickens2023}.
+HyperLogLog (HLL/HLL++) estimates distincts with small memory but is \emph{append-only} (no deletions) \cite{Flajolet2007}. Theta (KMV) sketches support \emph{union}, \emph{intersection}, and \emph{A-not-B} (set difference) \cite{Dasgupta2016,DataSketches,DataSketchesANotB}. For large sets, order-invariant cardinality estimators can exhibit inherent DP-like behavior, though we still add explicit DP noise \cite{Dickens2023}.
 
-\paragraph{Video privacy.}
-Systems such as VideoDP and Privid study DP for video analytics (e.g., counts/durations) \cite{VideoDP2020,Privid2022}. Our focus is complementary: \emph{distinct} telemetry under deletions with continual releases.
+\paragraph{Adjacent privacy systems.}
+Deployed DP analytics systems (e.g., LinkedIn's Audience Engagements) pair user-level DP with budget governance and deterministic noise \cite{Rogers2020}. Video-focused DP systems (VideoDP, Privid) address other query classes; our work targets \emph{distinct under deletions} with continual releases \cite{VideoDP2020,Privid2022}.
 
 \section{Problem Formulation}
-We consider many cameras/zones producing subject activity. For day $t$, define $S_t$ as the set of (pseudonymous) subjects active that day. DAU$(t)=|S_t|$. For a window $W$ (e.g., $30$ days), MAU$(t)=|\bigcup_{i=t-W+1}^{t} S_i|$.
+We consider many sources (apps/devices/sensors/zones) generating subject activity. For period $t$, define $S_t$ as the set of (pseudonymous) subjects active that period. DAU-like metric: $\mathrm{DA}(t)=|S_t|$. For a window $W$ (e.g., 30 days), MAW-like metric:
+\[
+\mathrm{MA}(t)=\Bigl|\bigcup_{i=t-W+1}^{t} S_i\Bigr|.
+\]
+\textbf{Privacy.} Item-level DP protects a subject's \emph{entire} trace. We release DA/MA once per period with $(\epsilon_t,\delta_t)$, tracking composition.
 
-\textbf{Privacy.} Item-level DP protects a subject’s \emph{entire} trace. We release DAU/MAU once per day with $(\epsilon_t,\delta_t)$, tracking composition.
+\textbf{Turnstile and deletions.} Insertions add a subject to $S_t$; erasures request removing a subject from all $S_i$ where present. We maintain updated sets/sketches and ensure future releases reflect removals.
 
-\textbf{Turnstile and deletions.} Insertions add a subject to $S_t$; erasures request removing a subject from \emph{all} $S_i$ where present. We maintain updated sets/sketches and re-release future metrics accordingly.
-
-\textbf{Flippancy.} Let $w$ bound per-subject flips across the horizon; daily coalescing keeps $w$ small in CCTV workloads.
+\textbf{Flippancy.} Let $w$ bound per-subject flips across the horizon; period coalescing keeps $w$ small in many telemetry workloads.
 
 \section{System Overview (Edge \texorpdfstring{$\to$}{->} Cloud)}
-\subsection*{Edge/NVR}
-\textbf{Pseudonymization.} For a short-lived signal (track embedding or plate string) $x$, compute
+\subsection*{Edge/Device}
+\textbf{Pseudonymization.} For a short-lived signal (e.g., app/device token) $x$, compute
 \[
-\mathrm{user\_key} = H(x \,\|\, \mathrm{salt}_{\mathrm{day}})
+\mathrm{subject\_key} = H(x \,\|\, \mathrm{salt}_{\mathrm{period}})
 \]
-with a daily-rotated salt; drop $x$. Maintain a per-day Theta sketch $T_t$ (or exact set for small loads). Upload sketch bytes (or DP’d scalar).
+with a rotated salt; drop $x$. Maintain a per-period Theta sketch $T_t$ (or exact set for small loads). Upload sketch bytes (or DP'd scalar).
 
 \subsection*{Gateway/Site}
-Union per-camera day sketches into site-level $T^{\mathrm{site}}_t$. Maintain a rolling union $U_t = \mathrm{Union}(T_{t-W+1},\ldots,T_t)$.
+Union per-source period sketches into site-level $T^{\mathrm{site}}_t$. Maintain a rolling union $U_t = \mathrm{Union}(T_{t-W+1},\ldots,T_t)$.
 For erasure of subject $u$ across days $\mathcal{D}$, construct $U^{(u)}_d$ (tiny sketches containing $u$ for each $d\in\mathcal{D}$) and apply $T_d \leftarrow \mathrm{AminusB}(T_d, U^{(u)}_d)$; update $U_t$ accordingly.
 
 \subsection*{Cloud/Tenant}
-Aggregate site sketches (unions), apply DP release (Section~\ref{sec:algorithms}), and log to a privacy budget ledger (metric, day, $\epsilon,\delta$, seed).
+Aggregate site sketches (unions), apply DP release (Section~\ref{sec:algorithms}), and log to a privacy budget ledger (metric, period, $\epsilon,\delta$, seed).
 
 \section{Algorithms}\label{sec:algorithms}
 \paragraph{Sketch layer.}
-We implement an interface with backends:
+Backends:
 \begin{itemize}
-    \item \emph{Theta (preferred):} supports union/intersection/A-not-B; fixed size $k$ controls RSE. Efficient for rolling MAU and deletions \cite{Dasgupta2016,DataSketchesANotB}.
+    \item \emph{Theta (preferred):} union/intersection/A-not-B; size $k$ controls RSE. Efficient for rolling windows and deletions \cite{Dasgupta2016,DataSketchesANotB}.
     \item \emph{Exact sets (baseline):} for small loads/testing.
-    \item \emph{HLL++ (optional):} union-only; deletions require day-level rebuild from a light index \cite{Flajolet2007}.
+    \item \emph{HLL++ (optional):} union-only; deletions require period-level rebuild from a light index \cite{Flajolet2007}.
 \end{itemize}
 
 \paragraph{DP continual release.}
-For a count query $f_t$ (DAU or MAU on day $t$), with item-level sensitivity $\Delta=1$, we release
+For count $f_t$ (DA or MA on period $t$), with item-level sensitivity $\Delta=1$, release
 \[
-\tilde{f}_t = f_t + \eta_t, \quad \eta_t \sim \mathrm{Lap}\!\left(\tfrac{\Delta}{\epsilon_t}\right).
+\tilde{f}_t = f_t + \eta_t,\qquad \eta_t \sim \mathrm{Lap}\!\left(\tfrac{\Delta}{\epsilon_t}\right).
 \]
-We use deterministic, per-(metric,day) seeding to prevent averaging via re-queries \cite{Rogers2020}. A budget service records $(t,\epsilon_t,\delta_t)$ and enforces caps. For stronger composition, swap to Gaussian/RDP.
+Use deterministic, per-(metric,period) seeding to prevent averaging via re-queries \cite{Rogers2020}. A budget service records $(t,\epsilon_t,\delta_t)$ and enforces caps. For tighter composition, swap to Gaussian/RDP.
 
 \paragraph{Deletion replay.}
 On erasure of subject $u$:
-(1) identify days $\mathcal{D}$; (2) remove $u$ from $T_d$ using A-not-B (Theta) or rebuild (HLL++); (3) update window unions; (4) future releases use updated values with fresh noise. Historical releases are \emph{not retroactively DP-redactable}; we treat them as superseded (operational policy).
+(1) identify periods $\mathcal{D}$; (2) remove $u$ from $T_d$ via A-not-B (Theta) or rebuild (HLL++); (3) update window unions; (4) future releases use updated values with fresh noise. Historical releases are not retroactively DP-redactable; treat as superseded (operational policy).
 
 \section{Implementation}
-We built a Python 3.11 prototype (FastAPI service, SQLite ledger). Modules:
+Python 3.11 prototype (FastAPI service, SQLite ledger). Modules:
 \begin{itemize}
     \item \texttt{sketches/}: Theta backend (via DataSketches) and exact sets.
-    \item \texttt{pipeline.py}: day-level stores, rolling unions, deletions, and DP releases.
+    \item \texttt{pipeline.py}: period stores, rolling unions, deletions, DP releases.
     \item \texttt{privacy\_accountant.py}: budget ledger; basic composition; warnings on cap.
     \item \texttt{routes.py}: \texttt{POST /event}, \texttt{GET /dau/\{day\}}, \texttt{GET /mau/\{day\}}.
     \item \texttt{auth.py}: optional API key.
 \end{itemize}
-\textbf{Noise seeding.} PRNG seeded by secret $s$ and key $(\mathrm{metric},\mathrm{day})$; rotate $s$ periodically. \textbf{Windows.} Maintain last $W={{MAU_WINDOW_DAYS}}$ days (drop older). \textbf{Edge.} For low-resource cameras, emit per-hour sets to gateway which compacts to per-day sketches.
+\textbf{Noise seeding.} PRNG seeded by secret $s$ and key $(\mathrm{metric},\mathrm{period})$; rotate $s$ periodically. \textbf{Windows.} Maintain last $W={{MAU_WINDOW_DAYS}}$ periods (drop older). \textbf{Edge.} On constrained devices, emit per-hour sets to gateway which compacts to per-period sketches.
 
 \section{Evaluation (placeholders)}\label{sec:evaluation}
 We outline the study; concrete numbers/plots are placeholders to be filled.
 
 \paragraph{Setup.}
-Synthetic CCTV-like traces over ${{EVAL_DAYS}}$ days; $N={{N_USERS}}$ subjects; per-day active {{DAILY_ACTIVE}}; overlap {{REPEAT_RATE}}\%. Deletions: start day {{DELETE_START}}, remove {{DELETE_COUNT}} subjects spread across prior days.
+Synthetic telemetry over ${{EVAL_DAYS}}$ periods; $N={{N_USERS}}$ subjects; per-period active {{DAILY_ACTIVE}}; overlap {{REPEAT_RATE}}\%. Deletions: start period {{DELETE_START}}, remove {{DELETE_COUNT}} subjects spread across prior periods.
 
 \paragraph{Metrics.}
-(1) \textbf{Accuracy:} MAE/relative error for DAU/MAU under $\epsilon={{EPSILON_DAU}},{{EPSILON_MAU}}$; (2) \textbf{Sketch impact:} Theta vs exact; (3) \textbf{Deletions:} correctness of replay and effect on MAU; (4) \textbf{Latency/Throughput:} p50/p99 and ingestion rate.
+(1) \textbf{Accuracy:} MAE/relative error for DA/MA under $\epsilon={{EPSILON_DAU}},{{EPSILON_MAU}}$; (2) \textbf{Sketch impact:} Theta vs exact; (3) \textbf{Deletions:} correctness of replay and effect on MA; (4) \textbf{Latency/Throughput:} p50/p99 and ingestion rate.
 
 \paragraph{Results (to be inserted).}
 \begin{itemize}
-    \item \textbf{Noise accuracy:} mean DAU MAE $={{DAU_MAE}}$ (\% error $={{DAU_REL_ERR}}\%$); MAU rel. error $={{MAU_REL_ERR}}\%$. Figure~{{FIG_NOISE_ACCURACY}}.
+    \item \textbf{Noise accuracy:} mean DA MAE $={{DAU_MAE}}$ (\% error $={{DAU_REL_ERR}}\%$); MA rel. error $={{MAU_REL_ERR}}\%$. Figure~{{FIG_NOISE_ACCURACY}}.
     \item \textbf{Sketch vs exact:} RSE $\approx$ {{THETA_RSE}}\% at $k={{THETA_K}}$; scatter near diagonal (Fig.~{{FIG_SKETCH_VS_EXACT}}).
-    \item \textbf{Deletions:} post-erasure MAU drops consistent with removed subjects $\,\pm\,$ DP noise (Table~{{TAB_DELETE}}).
+    \item \textbf{Deletions:} post-erasure MA drops consistent with removed subjects $\,\pm\,$ DP noise (Table~{{TAB_DELETE}}).
     \item \textbf{Performance:} ingestion {{THROUGHPUT}} events/s; queries $<{{QUERY_LAT_MS}}$ ms p99 (Fig.~{{FIG_PERF}}).
 \end{itemize}
 
+\section{Case Study: CCTV Analytics (Brief)}
+As one concrete instantiation, we apply the pipeline to occupancy/footfall analytics in CCTV:
+\begin{itemize}
+    \item \textbf{Edge pseudonymization:} daily-salted hashes of track/plate tokens on camera/NVR; no raw identities retained.
+    \item \textbf{Sketches at gateway:} per-day Theta sketches per camera/zone; site-level unions; rolling 30-day MAU via union; deletions via \emph{A-not-B}.
+    \item \textbf{DP releases and ledger:} daily DAU and 30-day MAU with published $(\epsilon,\delta)$; budget accounting and deterministic per-day noise.
+\end{itemize}
+Operational notes: Theta eases deletions; HLL++ requires day-rebuilds. Salt rotation breaks long-term linkability; retention windows align with data minimization. (Evaluation uses the same metrics as Section~\ref{sec:evaluation}, with CCTV-like workloads; placeholders apply.)
+
 \section{Discussion}
-\textbf{Theta vs HLL++.} Theta’s A-not-B simplifies deletions and rolling windows; HLL++ suits union-only pipelines or day-rebuilds when deletes are rare \cite{Flajolet2007,DataSketchesANotB}. \textbf{Budgeting.} Expose customer-visible $\epsilon$ tiers; DAU vs MAU budget splits. \textbf{CCTV specifics.} Daily salt rotation breaks long-term linkability; zone partitioning bounds $w$; retention aligns with data minimization.
+\textbf{Theta vs HLL++.} Theta’s A-not-B simplifies deletions and rolling windows; HLL++ suits union-only or rebuild-on-delete pipelines \cite{Flajolet2007,DataSketchesANotB}. \textbf{Budgeting.} Expose customer-visible $\epsilon$ tiers; allocate budget across DA vs MA. \textbf{Deployment.} Edge pseudonymization generalizes to SDKs/mobile, IoT gateways, and NVRs.
 
 \section{Limitations and Threats to Validity}
-Assumptions on tracker stability and coalescing bound flippancy; synthetic traces may not capture all deployment idiosyncrasies; sketch adversarial inputs and hash collisions; noise seed handling and multi-instance coordination.
+Assumptions on identifier stability and coalescing bound flippancy; synthetic traces may miss domain idiosyncrasies; sketch adversarial inputs and hash collisions; noise-seed handling and multi-instance coordination.
 
 \section{Ethics and Compliance}
-No raw identities beyond transient signals; per-day salt rotation; erasure SLAs; DP documentation and audit via \cite{NIST800226}; DPIA/IRB if evaluating on human-subject traces.
+No raw identities beyond transient signals; period salt rotation; erasure SLAs; DP documentation and audit via \cite{NIST800226}; DPIA/IRB if evaluating on human-subject traces.
 
 \section{Conclusion}
-We presented an edge-to-cloud, erasure-compliant DP pipeline for CCTV distinct analytics. By combining pseudonyms, Theta sketches, and flippancy-aware DP releases with a budget service, we deliver useful DAU/MAU metrics while honoring deletions and privacy. Future work: tree-aggregation for smoother continual releases, RDP accounting, federated deployments, and large-scale real-world evaluations.
+We presented a domain-agnostic, erasure-compliant DP pipeline for distinct analytics under continual release. By combining pseudonyms, Theta sketches, and flippancy-aware DP releases with a budget service, we deliver useful DA/MA metrics while honoring deletions. Future work: tree-aggregation for smoother continual releases, RDP accounting, federated deployments, and large-scale evaluations; extended case studies (ads reach, IoT fleets).
 
 \begin{thebibliography}{99}
 

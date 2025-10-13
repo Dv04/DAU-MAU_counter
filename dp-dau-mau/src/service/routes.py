@@ -7,13 +7,13 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from dp_core.pipeline import EventRecord, PipelineManager
 
 from . import auth
-from .api_schemas import EventIngestionRequest, HealthResponse, MetricResponse
+from .api_schemas import BudgetResponse, EventIngestionRequest, HealthResponse, MetricResponse
 
 router = APIRouter()
 
@@ -75,7 +75,7 @@ async def post_event(
             )
             for evt in events
         )
-        response = JSONResponse({"ingested": len(events)})
+        response = JSONResponse({"ingested": len(events)}, status_code=status.HTTP_202_ACCEPTED)
     finally:
         duration_ms = (time.perf_counter() - start) * 1000
         record_metrics("/event", duration_ms)
@@ -131,3 +131,24 @@ async def get_metrics() -> PlainTextResponse:
 @router.get("/healthz", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse()
+
+
+@router.get("/budget/{metric}", response_model=BudgetResponse)
+async def get_budget(
+    metric: str,
+    day: dt.date,
+    pipeline: PipelineManager = Depends(get_pipeline),
+    _: None = Depends(auth.require_api_key),
+) -> BudgetResponse:
+    start = time.perf_counter()
+    try:
+        metric_normalized = metric.lower()
+        if metric_normalized not in {"dau", "mau"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="metric must be 'dau' or 'mau'"
+            )
+        summary = pipeline.get_budget_summary(metric_normalized, day)
+        return BudgetResponse(**summary)
+    finally:
+        duration_ms = (time.perf_counter() - start) * 1000
+        record_metrics("/budget", duration_ms)

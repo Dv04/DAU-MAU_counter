@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1760046302.48231 "/Users/apple/DAU-MAU_counter/tex/abstract.tex" "abstract.pdf" "abstract" 1760046302.74882 0
-  "/Users/apple/DAU-MAU_counter/tex/abstract.tex" 1760046302.31073 2577 fd3d5b21765db972273fe6ac3c9105b5 ""
+["pdflatex"] 1760217649.02383 "/Users/apple/DAU-MAU_counter/tex/abstract.tex" "abstract.pdf" "abstract" 1760217649.29018 0
+  "/Users/apple/DAU-MAU_counter/tex/abstract.tex" 1760217649.23022 2400 812158d9e73e0ecc7ed9fe3e59e81759 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmbx10.tfm" 1136768653 1328 c834bbb027764024c09d3d2bf908b5f0 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmmi12.tfm" 1136768653 1524 4414a8315f39513458b80dfc63bff03a ""
@@ -29,8 +29,8 @@
   "/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1757019470 5467155 19efa205003f9ecad95fbbaa6ff24da1 ""
   "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1741450574 3345740 46b66fdb0378f7bf5921b5eabf1762b8 ""
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
-  "abstract.aux" 1760046302.72611 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
-  "abstract.tex" 1760046302.31073 2577 fd3d5b21765db972273fe6ac3c9105b5 ""
+  "abstract.aux" 1760217649.26682 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "abstract.tex" 1760217649.23022 2400 812158d9e73e0ecc7ed9fe3e59e81759 ""
   (generated)
   "abstract.aux"
   "abstract.log"
