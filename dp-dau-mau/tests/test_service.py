@@ -62,6 +62,8 @@ def test_service_endpoints_roundtrip() -> None:
     assert budget_payload["metric"] == "dau"
     assert budget_payload["epsilon_spent"] >= dau_payload["budget"]["epsilon_spent"]
     assert budget_payload["advanced_epsilon"] is None or budget_payload["advanced_epsilon"] >= 0.0
+    assert "policy" in budget_payload and "monthly_cap" in budget_payload["policy"]
+    assert budget_payload.get("rdp_orders") is not None
 
     unauth = client.get(f"/dau/{day2.isoformat()}")
     assert unauth.status_code == 401

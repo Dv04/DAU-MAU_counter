@@ -1,6 +1,5 @@
 PYTHON ?= python
 UVICORN ?= uvicorn
-PACKAGE = dp_core
 SERVICE_APP = service.app:app
 DATA_DIR ?= {{DATA_DIR}}
 EXPERIMENT_ID ?= {{EXPERIMENT_ID}}
@@ -8,8 +7,11 @@ LOAD_HOST ?= http://127.0.0.1:8000
 LOAD_USERS ?= 500
 LOAD_SPAWN ?= 100
 LOAD_RUNTIME ?= 2m
+COVERAGE_THRESHOLD ?= {{COVERAGE_THRESHOLD}}
+TEST_DATA_DIR := $(strip $(shell python - <<'PY'\nimport tempfile\npath = tempfile.mkdtemp(prefix=\"dpdau-test-\")\nprint(path)\nPY\n))
+BUDGET_SNAPSHOT := $(TEST_DATA_DIR)/reports/budget-snapshot.json
 
-.PHONY: setup fmt lint test run eval plots backup-ledger placeholder-check precommit install-dev load-test
+.PHONY: setup fmt lint test run eval plots backup-ledger placeholder-check precommit install-dev load-test smoke
 
 setup: install-dev precommit placeholder-check
 	@mkdir -p $(DATA_DIR)/ledgers $(DATA_DIR)/streams $(DATA_DIR)/plots/$(EXPERIMENT_ID) $(DATA_DIR)/experiments/$(EXPERIMENT_ID)
@@ -30,8 +32,9 @@ lint:
 	mypy src cli tests
 
 test: placeholder-check
-	pytest --cov=$(PACKAGE) --cov=service --maxfail=1
-	$(PYTHON) tools/export_budget_report.py --sample-days 3 --daily-users 64
+	DATA_DIR=$(TEST_DATA_DIR) pytest --cov=src --cov-report=term --cov-report=xml --cov-fail-under=$(COVERAGE_THRESHOLD) --maxfail=1
+	DATA_DIR=$(TEST_DATA_DIR) $(PYTHON) tools/export_budget_report.py --out $(BUDGET_SNAPSHOT) --sample-days 3 --daily-users 64
+	@echo "Budget snapshot: $(BUDGET_SNAPSHOT)"
 
 run:
 	PYTHONPATH=src $(UVICORN) --app-dir src $(SERVICE_APP) --reload --host 0.0.0.0 --port 8000
@@ -51,3 +54,6 @@ backup-ledger:
 
 load-test:
 	LOCUST_LOCUSTFILE=load/locustfile.py locust --headless --host $(LOAD_HOST) --users $(LOAD_USERS) --spawn-rate $(LOAD_SPAWN) --run-time $(LOAD_RUNTIME)
+
+smoke:
+	bash scripts/smoke.sh

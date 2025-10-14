@@ -28,4 +28,9 @@ def configure_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[N
     monkeypatch.setenv("TIMEZONE", "UTC")
     monkeypatch.setenv("SERVICE_API_KEY", "test-key")
     monkeypatch.setenv("RDP_ORDERS", "2,4")
+    monkeypatch.setenv("ADVANCED_DELTA", "1e-7")
+    monkeypatch.setenv("SKETCH_IMPL", "kmv")
+    monkeypatch.setenv("SKETCH_K", "512")
+    monkeypatch.setenv("USE_BLOOM_FOR_DIFF", "true")
+    monkeypatch.setenv("BLOOM_FP_RATE", "0.01")
     yield

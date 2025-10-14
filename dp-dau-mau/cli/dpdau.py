@@ -6,10 +6,12 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import json
+import os
 import random
 from collections.abc import Iterable
 from pathlib import Path
 
+import httpx
 import typer
 
 from dp_core import config as config_module
@@ -17,6 +19,8 @@ from dp_core.hashing import generate_random_secret
 from dp_core.pipeline import EventRecord, PipelineManager
 
 app = typer.Typer(help="Manage the DP-aware DAU/MAU proof-of-concept.")
+
+HTTP_TIMEOUT = 30.0
 
 
 def _load_jsonl(path: Path) -> Iterable[EventRecord]:
@@ -60,19 +64,73 @@ def _pipeline() -> PipelineManager:
     return PipelineManager(config=config_module.AppConfig.from_env())
 
 
+def _normalize_host(host: str) -> str:
+    return host.rstrip("/")
+
+
+def _resolve_api_key(provided: str | None) -> str | None:
+    return provided or os.environ.get("SERVICE_API_KEY")
+
+
+def _api_headers(api_key: str | None) -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-API-Key"] = api_key
+    return headers
+
+
+def _event_payload(event: EventRecord) -> dict[str, object]:
+    return {
+        "user_id": event.user_id,
+        "op": event.op,
+        "day": event.day.isoformat(),
+        "metadata": event.metadata,
+    }
+
+
 @app.command()
 def ingest(
     from_path: Path = typer.Argument(Path("{{EXAMPLE_DATASET_PATH}}"), help="Path to events JSONL"),
+    host: str | None = typer.Option(None, "--host", help="Service base URL (e.g., http://127.0.0.1:8000)"),
+    api_key: str | None = typer.Option(None, "--api-key", help="X-API-Key for service authentication"),
 ) -> None:
     """Ingest a batch of events from disk."""
 
+    events = list(_load_events(from_path))
+    if host:
+        base_url = _normalize_host(host)
+        key = _resolve_api_key(api_key)
+        payload = {"events": [_event_payload(evt) for evt in events]}
+        with httpx.Client(base_url=base_url, headers=_api_headers(key), timeout=HTTP_TIMEOUT) as client:
+            response = client.post("/event", json=payload)
+        if response.status_code >= 400:
+            typer.echo(f"Failed to ingest events: {response.text}", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(f"Ingested {len(payload['events'])} events via {base_url}/event")
+        return
+
     pipeline = _pipeline()
-    pipeline.ingest_batch(_load_events(from_path))
+    pipeline.ingest_batch(events)
     typer.echo(f"Ingested events from {from_path}")
 
 
 @app.command()
-def dau(day: dt.date = typer.Argument(..., help="Day to query (YYYY-MM-DD)")) -> None:
+def dau(
+    day: dt.date = typer.Argument(..., help="Day to query (YYYY-MM-DD)"),
+    host: str | None = typer.Option(None, "--host", help="Service base URL"),
+    api_key: str | None = typer.Option(None, "--api-key", help="X-API-Key header"),
+) -> None:
+    if host:
+        base_url = _normalize_host(host)
+        key = _resolve_api_key(api_key)
+        with httpx.Client(base_url=base_url, headers=_api_headers(key), timeout=HTTP_TIMEOUT) as client:
+            response = client.get(f"/dau/{day.isoformat()}")
+        if response.status_code >= 400:
+            typer.echo(f"Request failed: {response.text}", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(json.dumps(response.json(), indent=2))
+        return
+
     pipeline = _pipeline()
     result = pipeline.get_daily_release(day)
     typer.echo(json.dumps(result, indent=2))
@@ -82,7 +140,23 @@ def dau(day: dt.date = typer.Argument(..., help="Day to query (YYYY-MM-DD)")) ->
 def mau(
     end: dt.date = typer.Argument(..., help="Window end day (YYYY-MM-DD)"),
     window: int = typer.Option(None, help="Window size in days"),
+    host: str | None = typer.Option(None, "--host", help="Service base URL"),
+    api_key: str | None = typer.Option(None, "--api-key", help="X-API-Key header"),
 ) -> None:
+    if host:
+        base_url = _normalize_host(host)
+        key = _resolve_api_key(api_key)
+        params = {"end": end.isoformat()}
+        if window is not None:
+            params["window"] = window
+        with httpx.Client(base_url=base_url, headers=_api_headers(key), timeout=HTTP_TIMEOUT) as client:
+            response = client.get("/mau", params=params)
+        if response.status_code >= 400:
+            typer.echo(f"Request failed: {response.text}", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(json.dumps(response.json(), indent=2))
+        return
+
     pipeline = _pipeline()
     result = pipeline.get_mau_release(end, window)
     typer.echo(json.dumps(result, indent=2))

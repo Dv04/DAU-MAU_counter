@@ -3,7 +3,7 @@
 ## System Components
 - **FastAPI Service (`src/service/app.py`)**: exposes ingestion and query endpoints, thin wrapper over `PipelineManager`.
 - **Pipeline Core (`src/dp_core/pipeline.py`)**: orchestrates hashing, sketch updates, erasure replay, DP release, and ledger persistence.
-- **Sketch Implementations (`src/dp_core/sketches/`)**: `set_impl` for exact counting; optional `theta_impl`/`hllpp_impl` for approximations – import guarded.
+- **Sketch Implementations (`src/dp_core/sketches/`)**: `kmv_impl` for bottom-k distinct counting (default), `set_impl` for exact counting, and `theta_impl` gated on Apache DataSketches – all import guarded.
 - **Ledger (`src/dp_core/ledger.py`)**: SQLite-backed tables for activity, erasures, and DP budgets located at `{{DATA_DIR}}/ledgers/ledger.sqlite`.
 - **Privacy Accountant (`src/dp_core/privacy_accountant.py`)**: tracks ε/δ spend, aggregates Rényi orders {{RDP_ORDERS}}, and enforces hard caps {{DAU_BUDGET_TOTAL}}/{{MAU_BUDGET_TOTAL}}.
 - **Evaluation Suite (`eval/`)**: synthetic generators, adversarial workloads, benchmarking utilities, plots, and notebook.
@@ -34,6 +34,11 @@
 - `/budget/{metric}?day=YYYY-MM-DD` surfaces the same snapshot for operators; CLI commands `dpdau dau` / `dpdau mau` embed the budget block for quick checks.
 - Use `PipelineManager.reset_budget` (exposed via `dpdau reset-budget`) to wipe a monthly ledger after approvals; log manual overrides in your ops runbook.
 
+## Sketch Tuning
+- Default deployment uses KMV (`{{SKETCH_IMPL}}=kmv`). Increase `{{SKETCH_K}}` to reduce variance at the cost of memory (~8 bytes per retained hash). Values ≥2048 are recommended for production traffic.
+- `{{USE_BLOOM_FOR_DIFF}}` controls whether A\B uses a Bloom filter; adjust `{{BLOOM_FP_RATE}}` if deletions exhibit bias. Disable Bloom (`false`) for deterministic debugging.
+- Switch to `{{SKETCH_IMPL}}=set` for exact replay tests or tightly regulated workloads; Theta remains available when Apache DataSketches is installed.
+
 ## Salt Rotation
 - Secrets stored in `.env` as `HASH_SALT_SECRET={{HASH_SALT_SECRET}}`.
 - `SaltManager` derives per-day salts via HKDF on `(day || rotation_epoch)`.
@@ -46,9 +51,8 @@
 - Budget overspend triggers HTTP 429 with `budget_remaining=0`; resume after monthly reset via `dpdau reset-budget --month 2025-11`.
 - Ensure deletes are re-applied after restore by replaying `erasure_log` with `pending=1`.
 
-## Observability & Alerts
 - `make test` automatically drops `{{DATA_DIR}}/reports/budget-snapshot.json` (via `tools/export_budget_report.py`) for CI uploads; attach alongside `coverage.xml` so reviewers can inspect ε spend per build.
-- Monitor `/metrics` (`dp_requests_total`, `dp_request_latency_ms_p50`, `dp_request_latency_ms_p99`) plus FastAPI status codes. Fire a Sev-2 alert when there are ≥10 `5xx` responses in 5 minutes or when p99 latency exceeds 1 s for 15 minutes.
+- Monitor `/metrics` (`app_requests_total`, `app_requests_5xx_total`, `app_request_latency_seconds_*`) plus FastAPI status codes. Fire a Sev-2 alert when there are ≥10 `app_requests_5xx_total` increments in 5 minutes or when the `/event` P99 bucket exceeds 1 s for 15 minutes.
 - During incidents, capture both the Prometheus scrape and `curl /budget/{metric}?day=YYYY-MM-DD` outputs to validate budget headroom before re-running backfills.
 
 ## Test Dataset Generation
@@ -61,6 +65,7 @@
 - Locust harness lives in `load/locustfile.py`; install extras via `pip install .[load]`.
 - Run `SERVICE_API_KEY={{SERVICE_API_KEY}} make load-test LOAD_USERS=2000 LOAD_SPAWN=500 LOAD_RUNTIME=5m` to simulate 10–50k events/sec.
 - Collect Locust CSV/HTML artifacts (pass `--csv`/`--html` flags via `LOCUST_OPTS`) and correlate with `/metrics` for latency regression analysis.
+- For quick confidence checks, execute `make smoke` which spins up a temporary Uvicorn instance, generates a 7-day synthetic workload, ingests it via the CLI, and validates DAU/MAU/BUDGET responses.
 
 ## Security & Configuration Tips
 - API key authentication optional; enable by setting `SERVICE_API_KEY={{SERVICE_API_KEY}}`.
@@ -88,6 +93,13 @@
 - [ ] Add streaming ingestion benchmark harness (locust / vegeta).
 - [ ] Harden notebook reproducibility with papermill automation.
 - [ ] Flesh out alerting integration in `service/auth.py`.
+
+## Changelog
+- **Phase 2 (October 2025)**
+  - Default sketch switched to KMV with configurable `{{SKETCH_K}}`, `{{USE_BLOOM_FOR_DIFF}}`, and `{{BLOOM_FP_RATE}}`; exact set remains for deterministic ops.
+  - Budget snapshot now returns advanced composition bounds and 429 responses expose machine-readable exhaustion payloads.
+  - `/metrics` exports `app_requests_total`, `app_requests_5xx_total`, and latency histograms for Prometheus; smoke and load-test automation added.
+  - CLI supports `--host`/`--api-key` for exercising the running API; CI enforces coverage via {{COVERAGE_THRESHOLD}} and uploads budget artefacts.
 
 ## Recent Changes & Operational Notes
 - `make run` now invokes `uvicorn --app-dir src` so that `service.app` imports cleanly under the reloader. Always launch from the repository root and keep the process running in its own terminal tab.

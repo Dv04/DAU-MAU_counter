@@ -49,6 +49,8 @@ class BudgetSummary(BaseModel):
     advanced_epsilon: float | None = None
     advanced_delta: float | None = None
     release_count: int = 0
+    rdp_orders: list[float] = Field(default_factory=list)
+    policy: dict[str, Any] = Field(default_factory=dict)
 
 
 class MetricResponse(BaseModel):

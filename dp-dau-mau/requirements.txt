@@ -1,13 +1,8 @@
 fastapi
 uvicorn[standard]
 pydantic
-numpy
-pandas
-sqlalchemy
-matplotlib
 typer
-python-dotenv
-scipy
+httpx
 pytest
 pytest-cov
 hypothesis

@@ -16,15 +16,25 @@ from .dp_mechanisms import MechanismResult, gaussian_mechanism, laplace_mechanis
 from .hashing import hash_user_id, hash_user_root
 from .ledger import ActivityEntry, ErasureEntry, Ledger
 from .privacy_accountant import BudgetCaps, PrivacyAccountant
-from .sketches.base import SketchFactory
-from .sketches.hllpp_impl import HllppSketch
+from .sketches.base import SketchConfig, SketchFactory
+from .sketches.kmv_impl import KMVSketch
 from .sketches.set_impl import SetSketch
-from .sketches.theta_impl import ThetaSketch, ThetaSketchUnavailableError
 from .windows import WindowManager
 
 
 class BudgetExceededError(Exception):
     """Raised when attempting to exceed the allocated privacy budget."""
+
+    def __init__(self, metric: str, day: dt.date, cap: float, spent: float) -> None:
+        self.metric = metric
+        self.day = day
+        self.cap = cap
+        self.spent = spent
+        self.period = day.strftime("%Y-%m")
+        message = (
+            f"{metric} budget exhausted for {day.isoformat()} (spent={spent:.4f}, cap={cap:.4f})"
+        )
+        super().__init__(message)
 
 
 @dataclass(slots=True)
@@ -70,20 +80,39 @@ class PipelineManager:
         )
 
     def _build_sketch_factory(self) -> SketchFactory:
-        builders: dict[str, callable] = {
-            "set": SetSketch,
-        }
-        builders["hllpp"] = lambda: HllppSketch()
+        sketch_cfg = SketchConfig(
+            k=self.config.sketch.k,
+            use_bloom_for_diff=self.config.sketch.use_bloom_for_diff,
+            bloom_fp_rate=self.config.sketch.bloom_fp_rate,
+        )
+        factory = SketchFactory(config=sketch_cfg, backends={}, default_impl=self.config.sketch.impl)
+        factory.register(
+            "set",
+            lambda cfg: SetSketch(cfg),
+            lambda payload, cfg: SetSketch.deserialize(payload, cfg),
+        )
+        factory.register(
+            "kmv",
+            lambda cfg: KMVSketch(cfg),
+            lambda payload, cfg: KMVSketch.deserialize(payload, cfg),
+        )
         try:
-            builders["theta"] = ThetaSketch
+            from .sketches.theta_impl import ThetaSketch, ThetaSketchUnavailableError
+
+            factory.register(
+                "theta",
+                lambda cfg: ThetaSketch(cfg),
+                lambda payload, cfg: ThetaSketch.deserialize(payload, cfg),
+            )
+            if self.config.sketch.impl == "theta":  # fail fast if backend missing
+                ThetaSketch(sketch_cfg).compact()
         except ThetaSketchUnavailableError:
-            pass
-        factory = SketchFactory(builders=builders, default_impl="set")
-        if self.config.sketch.impl not in factory.builders:
+            if self.config.sketch.impl == "theta":
+                raise
+        if self.config.sketch.impl not in factory.backends:
             raise RuntimeError(
                 f"Requested sketch implementation '{self.config.sketch.impl}' is unavailable."
             )
-        factory.default_impl = self.config.sketch.impl
         return factory
 
     def ingest_event(self, event: EventRecord) -> None:
@@ -139,7 +168,8 @@ class PipelineManager:
         delta = self.config.dp.delta if metric == "mau" else 0.0
         cap = self.budgets.dau if metric == "dau" else self.budgets.mau
         if not self.accountant.can_release(metric, epsilon, day, cap):
-            raise BudgetExceededError(f"{metric} budget exhausted for {day.isoformat()}")
+            spent = self.accountant.spent_budget(metric, day)
+            raise BudgetExceededError(metric, day, cap, spent)
         seed = _seed_for(metric, day, self.config.dp.default_seed)
         rng = random.Random(seed)
         if delta > 0:
@@ -173,8 +203,8 @@ class PipelineManager:
     def get_daily_release(self, day: dt.date) -> dict[str, Any]:
         self.replay_deletions()
         day_str = day.isoformat()
-        estimate, _sketch, keys = self.window_manager.get_dau(day_str, self.events_loader)
-        base_value = float(len(keys))
+        estimate, _sketch, exact_count = self.window_manager.get_dau(day_str, self.events_loader)
+        base_value = float(exact_count)
         sensitivity = float(min(self.config.dp.w_bound, 1))
         dp_result = self._release("dau", day, base_value, sensitivity)
         budget = self.accountant.budget_snapshot(

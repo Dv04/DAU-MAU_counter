@@ -7,20 +7,15 @@ name = "dp-dau-mau"
 version = "0.1.0"
 description = "Differentially private DAU/MAU counter with deletion support"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 authors = [{ name = "DP Engineering Team" }]
 dependencies = [
   "fastapi>=0.111,<0.113",
   "uvicorn[standard]>=0.30,<0.32",
   "pydantic>=2.7,<2.9",
-  "numpy>=1.26,<2.1",
-  "pandas>=2.2,<2.3",
-  "sqlalchemy>=2.0,<2.1",
-  "matplotlib>=3.8,<3.10",
   "typer>=0.12,<0.13",
-  "python-dotenv>=1.0,<1.1",
-  "scipy>=1.11,<1.14",
+  "httpx>=0.27,<0.28",
 ]
 
 [project.optional-dependencies]
@@ -42,11 +37,11 @@ dpdau = "cli.dpdau:app"
 
 [tool.black]
 line-length = 100
-target-version = ["py311"]
+target-version = ["py313"]
 include = "\\.pyi?$"
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py313"
 line-length = 100
 extend-exclude = ["eval/notebooks"]
 
@@ -58,7 +53,7 @@ ignore = ["N805"]
 known-first-party = ["dp_core", "service"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

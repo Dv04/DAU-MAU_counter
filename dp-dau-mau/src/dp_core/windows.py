@@ -16,7 +16,7 @@ def parse_day(day: str) -> dt.date:
 @dataclass(slots=True)
 class DaySnapshot:
     sketch: DistinctSketch
-    keys: set[bytes]
+    exact_count: int
     dirty: bool = False
 
 
@@ -40,7 +40,8 @@ class WindowManager:
         sketch = self.sketch_factory.create()
         for key in active:
             sketch.add(key)
-        snapshot = DaySnapshot(sketch=sketch, keys=active, dirty=False)
+        sketch.compact()
+        snapshot = DaySnapshot(sketch=sketch, exact_count=len(active), dirty=False)
         self.snapshots[day] = snapshot
         return snapshot
 
@@ -55,9 +56,9 @@ class WindowManager:
 
     def get_dau(
         self, day: str, events_loader: Callable[[str], Iterable[tuple[str, bytes]]]
-    ) -> tuple[float, DistinctSketch, set[bytes]]:
+    ) -> tuple[float, DistinctSketch, int]:
         snapshot = self.get_snapshot(day, events_loader)
-        return snapshot.sketch.estimate(), snapshot.sketch, snapshot.keys
+        return snapshot.sketch.estimate(), snapshot.sketch, snapshot.exact_count
 
     def get_mau(
         self,
@@ -72,6 +73,6 @@ class WindowManager:
         while day <= end:
             day_key = day.isoformat()
             snapshot = self.get_snapshot(day_key, events_loader)
-            union.merge(snapshot.sketch)
+            union.union(snapshot.sketch)
             day += dt.timedelta(days=1)
         return union.estimate(), union

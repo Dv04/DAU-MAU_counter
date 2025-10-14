@@ -19,7 +19,10 @@ Every placeholder token of the form `{{DATA_DIR}}`, `{{EPSILON_DAU}}`, etc. must
 | {{DEFAULT_SEED}} | HANDOFF.md (Test Dataset), src/dp_core/config.py | Default RNG seed for reproducibility. | int | 0 ≤ seed < 2^32. Example: `20251009` | 20251009 |
 | {{EXAMPLE_DATASET_PATH}} | README.md (CLI), cli/dpdau.py | Example dataset path for CLI ingest. | path | JSONL/CSV path. Example: `data/example.jsonl` | REQUIRED |
 | {{HLL_REBUILD_DAYS_BUFFER}} | HANDOFF.md (Known Gaps), src/dp_core/sketches/hllpp_impl.py | Extra days to cache during HLL++ rebuilds. | int | ≥0. Example: `7` | 3 |
-| {{SKETCH_IMPL}} | README.md, src/dp_core/config.py | Active sketch backend selection (`set`, `theta`, `hllpp`). | string | Must be one of allowed values. | set |
+| {{SKETCH_IMPL}} | README.md, src/dp_core/config.py | Active sketch backend selection (`kmv`, `set`, `theta`). | string | Must be one of allowed values. | kmv |
+| {{SKETCH_K}} | README.md (Sketch Tuning), src/dp_core/config.py | Bottom-k parameter for KMV sketch. | int | ≥64 recommended. Example: `4096` | 4096 |
+| {{USE_BLOOM_FOR_DIFF}} | README.md (Sketch Tuning), src/dp_core/config.py | Whether KMV diff uses Bloom filter to filter B before A	extbackslash B. | bool | `true` / `false`. | true |
+| {{BLOOM_FP_RATE}} | README.md (Sketch Tuning), src/dp_core/config.py | Target false-positive rate for the Bloom filter when diffing. | float | 0 < p < 1. Example: `0.01` | 0.01 |
 | {{DAU_BUDGET_TOTAL}} | HANDOFF.md (Budgeting), src/dp_core/privacy_accountant.py | Monthly ε budget cap for DAU. | float | >0. Example: `3.0` | 3.0 |
 | {{MAU_BUDGET_TOTAL}} | HANDOFF.md (Budgeting), src/dp_core/privacy_accountant.py | Monthly ε budget cap for MAU. | float | >0. Example: `3.5` | 3.5 |
 | {{RDP_ORDERS}} | README.md (Privacy Accounting), src/dp_core/config.py | Comma-separated Rényi orders tracked by the accountant. | list | Orders > 1. Example: `2,4,8,16` | 2,4,8,16,32 |
@@ -29,3 +32,4 @@ Every placeholder token of the form `{{DATA_DIR}}`, `{{EPSILON_DAU}}`, etc. must
 | {{TIMEZONE}} | README.md (Event JSON), src/dp_core/config.py | Canonical timezone for day boundaries. | string | IANA TZ name. Example: `UTC` | UTC |
 | {{SERVICE_DATABASE_URL}} | HANDOFF.md (Postgres Migration), src/dp_core/config.py | Database connection string when migrating off SQLite. | string | DSN format. Example: `postgresql://user:pass@host/db` | REQUIRED |
 | {{KAFKA_TOPIC}} | HANDOFF.md (Postgres & Kafka), src/dp_core/config.py | Upstream Kafka topic for streaming ingest. | string | Kafka topic name. Example: `dp-dau-events` | REQUIRED |
+| {{COVERAGE_THRESHOLD}} | README.md (Testing), Makefile | Minimum coverage percentage enforced in CI. | float | 0 < threshold ≤ 100. Example: `70` | 70 |

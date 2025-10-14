@@ -7,7 +7,7 @@
 
 ## Short Term Enhancements
 - Add CI task to fail if `SERVICE_API_KEY` remains unset in integration environments; document secret provisioning in the runbook.
-- Introduce a Prometheus counter for failed requests and HTTP status breakdown, then add alert thresholds for repeated 5xx bursts.
+- Publish `/metrics` to your Prometheus stack and pin dashboards for `app_requests_total`/`app_request_latency_seconds` with pager thresholds.
 - Extend observability by storing the last N `/budget` responses in `{{DATA_DIR}}/reports/` during smoke tests for historical comparison.
 
 ## Longer Term

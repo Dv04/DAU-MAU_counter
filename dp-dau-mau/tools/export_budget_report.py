@@ -7,6 +7,7 @@ import datetime as dt
 import json
 import random
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -104,7 +105,8 @@ def main() -> None:
 
     out_path = args.out
     if out_path is None:
-        out_path = pipeline.config.storage.data_dir / "reports" / "budget-snapshot.json"
+        out_dir = Path(tempfile.mkdtemp(prefix="dpdau-budget-"))
+        out_path = out_dir / "budget-snapshot.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
 

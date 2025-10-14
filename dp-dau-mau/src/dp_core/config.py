@@ -34,6 +34,26 @@ def _resolve_int(value: object, placeholder: str, default: int) -> int:
     return int(value)
 
 
+def _resolve_bool(value: object, placeholder: str, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        text = value.strip()
+        if PLACEHOLDER_PATTERN.fullmatch(text):
+            return default
+        lowered = text.lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "off"}:
+            return False
+        raise ValueError(f"{placeholder} must be a boolean string (true/false)")
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    raise ValueError(f"{placeholder} must resolve to a boolean value")
+
+
 def _resolve_float_sequence(
     value: object,
     placeholder: str,
@@ -147,15 +167,18 @@ class DPSettings(BaseModel):
 
 
 class SketchSettings(BaseModel):
-    impl: str = Field(default="set")
+    impl: str = Field(default="kmv")
     mau_window_days: int = Field(default=30)
     hll_rebuild_days_buffer: int = Field(default=3)
+    k: int = Field(default=4096)
+    use_bloom_for_diff: bool = Field(default=True)
+    bloom_fp_rate: float = Field(default=0.01)
 
     @field_validator("impl", mode="before")
     def _v_impl(cls, v: object) -> str:
-        value = _resolve_string(v, "{{SKETCH_IMPL}}", "set")
-        if value not in {"set", "theta", "hllpp"}:
-            raise ValueError("{{SKETCH_IMPL}} must be one of 'set', 'theta', 'hllpp'")
+        value = _resolve_string(v, "{{SKETCH_IMPL}}", "kmv")
+        if value not in {"set", "theta", "kmv"}:
+            raise ValueError("{{SKETCH_IMPL}} must be one of 'kmv', 'set', 'theta'")
         return value
 
     @field_validator("mau_window_days", mode="before")
@@ -165,6 +188,24 @@ class SketchSettings(BaseModel):
     @field_validator("hll_rebuild_days_buffer", mode="before")
     def _v_hll_buffer(cls, v: object) -> int:
         return _resolve_int(v, "{{HLL_REBUILD_DAYS_BUFFER}}", 3)
+
+    @field_validator("k", mode="before")
+    def _v_k(cls, v: object) -> int:
+        value = _resolve_int(v, "{{SKETCH_K}}", 4096)
+        if value <= 0:
+            raise ValueError("{{SKETCH_K}} must be a positive integer")
+        return value
+
+    @field_validator("use_bloom_for_diff", mode="before")
+    def _v_use_bloom(cls, v: object) -> bool:
+        return _resolve_bool(v, "{{USE_BLOOM_FOR_DIFF}}", True)
+
+    @field_validator("bloom_fp_rate", mode="before")
+    def _v_bloom_rate(cls, v: object) -> float:
+        rate = _resolve_numeric(v, "{{BLOOM_FP_RATE}}", 0.01)
+        if not 0 < rate < 1:
+            raise ValueError("{{BLOOM_FP_RATE}} must be between 0 and 1")
+        return rate
 
 
 class StorageSettings(BaseModel):
@@ -271,6 +312,9 @@ class AppConfig(BaseModel):
             "impl": env.get("SKETCH_IMPL"),
             "mau_window_days": env.get("MAU_WINDOW_DAYS"),
             "hll_rebuild_days_buffer": env.get("HLL_REBUILD_DAYS_BUFFER"),
+            "k": env.get("SKETCH_K"),
+            "use_bloom_for_diff": env.get("USE_BLOOM_FOR_DIFF"),
+            "bloom_fp_rate": env.get("BLOOM_FP_RATE"),
         }
         storage_kwargs = {
             "data_dir": env.get("DATA_DIR"),

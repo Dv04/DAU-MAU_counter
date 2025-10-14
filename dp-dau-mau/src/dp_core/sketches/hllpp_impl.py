@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import math
+import pickle
 from collections.abc import Iterable
 
-from .base import DistinctSketch
+from .base import DistinctSketch, SketchConfig
 
 
 def _rho(w: int, max_bits: int) -> int:
@@ -23,13 +24,14 @@ class HllppSketch(DistinctSketch):
     Deletions are not supported natively; the pipeline rebuilds affected days using cached keys.
     """
 
-    def __init__(self, precision: int = 14, registers: list[int] | None = None) -> None:
+    def __init__(self, precision: int = 14, registers: list[int] | None = None, config: SketchConfig | None = None) -> None:
         if not 4 <= precision <= 16:
             raise ValueError("precision must be between 4 and 16")
         self.precision = precision
         self.m = 1 << precision
         self.alpha = 0.7213 / (1 + 1.079 / self.m)
         self.registers = registers or [0] * self.m
+        self._config = config
 
     def _hash(self, key: bytes) -> int:
         return int(hashlib.sha256(key).hexdigest(), 16)
@@ -41,7 +43,7 @@ class HllppSketch(DistinctSketch):
         rank = _rho(w << (64 - self.precision), 64 - self.precision)
         self.registers[idx] = max(self.registers[idx], rank)
 
-    def merge(self, other: DistinctSketch) -> None:
+    def union(self, other: DistinctSketch) -> None:
         if not isinstance(other, HllppSketch):
             raise TypeError("HllppSketch can only merge another HllppSketch.")
         if other.precision != self.precision:
@@ -59,10 +61,10 @@ class HllppSketch(DistinctSketch):
             return float(-(1 << 32) * math.log(1 - raw_estimate / (1 << 32)))
         return float(raw_estimate)
 
-    def copy(self) -> HllppSketch:
-        return HllppSketch(self.precision, self.registers.copy())
+    def copy(self) -> "HllppSketch":
+        return HllppSketch(self.precision, self.registers.copy(), self._config)
 
-    def difference(self, other: DistinctSketch) -> DistinctSketch:
+    def a_not_b(self, other: DistinctSketch) -> DistinctSketch:
         raise NotImplementedError(
             "HllppSketch does not support difference; rebuild via cached per-day keys "
             "and respect {{HLL_REBUILD_DAYS_BUFFER}}."
@@ -72,3 +74,14 @@ class HllppSketch(DistinctSketch):
         self.registers = [0] * self.m
         for key in keys:
             self.add(key)
+
+    def compact(self) -> None:
+        return None
+
+    def serialize(self) -> bytes:
+        return pickle.dumps((self.precision, self.registers))
+
+    @classmethod
+    def deserialize(cls, payload: bytes, config: SketchConfig) -> "HllppSketch":
+        precision, registers = pickle.loads(payload)
+        return cls(precision=precision, registers=list(registers), config=config)

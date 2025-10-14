@@ -13,8 +13,8 @@ This runbook captures the minimum steps for triaging incidents, rotating secrets
 ## 1. Alert Intake
 | Alert | Trigger | First Response |
 | --- | --- | --- |
-| High 5xx rate | ≥10 `5xx` responses within 5 minutes (Prometheus `dp_requests_total` + status) | Check `/metrics` and application logs for stack traces; verify DB health. |
-| Latency regression | `dp_request_latency_ms_p99 > 1000` ms for 15 min | Inspect `/metrics`, confirm worker CPU usage, consider throttling ingestion. |
+| High 5xx rate | ≥10 increments of `app_requests_5xx_total` within 5 minutes | Check `/metrics` and application logs for stack traces; verify DB health. |
+| Latency regression | `/metrics` histogram shows `/event` bucket `le="1"` saturation or `/mau` p99 drift >1s | Inspect `/metrics`, confirm worker CPU usage, consider throttling ingestion. |
 | Privacy budget exhaustion | `/dau`/`/mau` returns HTTP 429 or `budget_remaining == 0` | Review monthly spend via `/budget/{metric}?day=YYYY-MM-DD`; notify stakeholders before resetting. |
 
 All alerts must be acknowledged in the incident channel within 15 minutes.
@@ -24,7 +24,7 @@ All alerts must be acknowledged in the incident channel within 15 minutes.
    ```bash
    curl http://127.0.0.1:8000/healthz -H "X-API-Key: $SERVICE_API_KEY"
    ```
-2. Inspect recent metrics:
+2. Inspect recent metrics (focus on `app_requests_total`, `app_requests_5xx_total`, latency buckets):
    ```bash
    curl http://127.0.0.1:8000/metrics
    ```

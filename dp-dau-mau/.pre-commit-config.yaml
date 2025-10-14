@@ -21,6 +21,11 @@ repos:
 
   - repo: local
     hooks:
+      - id: generated-artefact-guard
+        name: generated-artefact-guard
+        entry: python dp-dau-mau/tools/precommit_guard.py
+        language: system
+        pass_filenames: true
       - id: placeholder-ledger
         name: placeholder-ledger
         entry: python dp-dau-mau/tools/check_placeholders.py --root dp-dau-mau --manifest dp-dau-mau/Placeholders.md

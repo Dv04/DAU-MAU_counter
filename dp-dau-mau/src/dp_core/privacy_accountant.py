@@ -34,6 +34,7 @@ class BudgetSnapshot:
     advanced_epsilon: float | None = None
     advanced_delta: float | None = None
     release_count: int = 0
+    rdp_orders: tuple[float, ...] = field(default_factory=tuple)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -49,6 +50,12 @@ class BudgetSnapshot:
             "advanced_epsilon": self.advanced_epsilon,
             "advanced_delta": self.advanced_delta,
             "release_count": self.release_count,
+            "rdp_orders": list(self.rdp_orders),
+            "policy": {
+                "monthly_cap": self.epsilon_cap,
+                "delta": self.delta,
+                "advanced_delta": self.advanced_delta,
+            },
         }
 
 
@@ -105,6 +112,19 @@ class PrivacyAccountant:
 
     def remaining_budget(self, metric: str, day: dt.date, cap: float) -> float:
         return max(0.0, cap - self.spent_budget(metric, day))
+
+    def get_spent_epsilon(self, metric: str, day: dt.date) -> float:
+        """Public helper exposing cumulative epsilon for the month."""
+        return self.spent_budget(metric, day)
+
+    def monthly_release_count(self, metric: str, day: dt.date) -> int:
+        period = month_key(day)
+        cur = self._conn.execute(
+            "SELECT COUNT(*) FROM releases WHERE metric = ? AND period = ?",
+            (metric, period),
+        )
+        (count,) = cur.fetchone()
+        return int(count or 0)
 
     def record_release(
         self,
@@ -250,6 +270,7 @@ class PrivacyAccountant:
             advanced_epsilon=adv_eps,
             advanced_delta=adv_delta,
             release_count=len(releases),
+            rdp_orders=tuple(sorted(float(order) for order in orders)),
         )
 
     def close(self) -> None:
