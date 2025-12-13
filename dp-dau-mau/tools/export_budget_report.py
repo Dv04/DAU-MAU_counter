@@ -7,7 +7,6 @@ import datetime as dt
 import json
 import random
 import sys
-import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -16,15 +15,18 @@ SRC_DIR = REPO_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from dp_core.pipeline import EventRecord, PipelineManager  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from service.app import create_app  # noqa: E402
 
 
 def _ingest_sample_traffic(
-    pipeline: PipelineManager,
+    client: TestClient,
     *,
     days: int,
     daily_users: int,
     seed: int,
+    headers: dict[str, str],
 ) -> list[dt.date]:
     rng = random.Random(seed)
     today = dt.date.today()
@@ -34,40 +36,46 @@ def _ingest_sample_traffic(
         day = start + dt.timedelta(days=offset)
         sampled_days.append(day)
         user_ids = [f"ci-user-{offset}-{i}" for i in range(daily_users)]
-        for user in user_ids:
-            pipeline.ingest_event(
-                EventRecord(
-                    user_id=user,
-                    op="+",
-                    day=day,
-                    metadata={"source": "ci-sample"},
-                )
-            )
-        # trigger one delete to exercise replay logic
-        if rng.random() < 0.3:
+        events = [
+            {
+                "user_id": user,
+                "op": "+",
+                "day": day.isoformat(),
+                "metadata": {"source": "ci-sample"},
+            }
+            for user in user_ids
+        ]
+        if rng.random() < 0.3 and user_ids:
             deleted_user = rng.choice(user_ids)
-            pipeline.ingest_event(
-                EventRecord(
-                    user_id=deleted_user,
-                    op="-",
-                    day=day,
-                    metadata={"days": [day.isoformat()]},
-                )
+            events.append(
+                {
+                    "user_id": deleted_user,
+                    "op": "-",
+                    "day": day.isoformat(),
+                    "metadata": {"source": "ci-sample", "days": [day.isoformat()]},
+                }
             )
-        pipeline.get_daily_release(day)
-        pipeline.get_mau_release(day)
+        if events:
+            response = client.post("/event", json={"events": events}, headers=headers)
+            response.raise_for_status()
+        client.get(f"/dau/{day.isoformat()}", headers=headers).raise_for_status()
+        client.get("/mau", params={"end": day.isoformat()}, headers=headers).raise_for_status()
     return sampled_days
 
 
 def _collect_budget_snapshots(
-    pipeline: PipelineManager,
+    client: TestClient,
     *,
     metrics: Sequence[str],
     day: dt.date,
+    headers: dict[str, str],
 ) -> dict[str, object]:
-    snapshot: dict[str, object] = {"generated_at": dt.datetime.utcnow().isoformat() + "Z"}
+    snapshot: dict[str, object] = {"generated_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+    params = {"day": day.isoformat()}
     for metric in metrics:
-        snapshot[metric] = pipeline.get_budget_summary(metric, day)
+        response = client.get(f"/budget/{metric}", params=params, headers=headers)
+        response.raise_for_status()
+        snapshot[metric] = response.json()
     return snapshot
 
 
@@ -93,20 +101,29 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    pipeline = PipelineManager()
-    sampled_days = _ingest_sample_traffic(
-        pipeline,
-        days=max(0, args.sample_days),
-        daily_users=max(1, args.daily_users),
-        seed=args.seed,
-    )
-    target_day = sampled_days[-1] if sampled_days else dt.date.today()
-    snapshot = _collect_budget_snapshots(pipeline, metrics=args.metrics, day=target_day)
+    app = create_app()
+    api_key = app.state.config.security.api_key  # type: ignore[attr-defined]
+    headers = {"X-API-Key": api_key} if api_key else {}
+
+    with TestClient(app) as client:
+        sampled_days = _ingest_sample_traffic(
+            client,
+            days=max(0, args.sample_days),
+            daily_users=max(1, args.daily_users),
+            seed=args.seed,
+            headers=headers,
+        )
+        target_day = sampled_days[-1] if sampled_days else dt.date.today()
+        snapshot = _collect_budget_snapshots(
+            client, metrics=args.metrics, day=target_day, headers=headers
+        )
 
     out_path = args.out
     if out_path is None:
-        out_dir = Path(tempfile.mkdtemp(prefix="dpdau-budget-"))
-        out_path = out_dir / "budget-snapshot.json"
+        data_dir = app.state.config.storage.data_dir  # type: ignore[attr-defined]
+        out_path = data_dir / "reports" / "budget-snapshot.json"
+    else:
+        out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
 

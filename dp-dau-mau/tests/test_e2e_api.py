@@ -1,5 +1,3 @@
-import datetime as dt
-
 from fastapi.testclient import TestClient
 
 from service.app import create_app
@@ -96,15 +94,20 @@ def test_missing_api_key_returns_401(monkeypatch) -> None:
     day = "2025-10-04"
     resp = client.get(f"/dau/{day}")
     assert resp.status_code == 401
+    assert resp.json()["error"] == "unauthorized"
 
 
 def test_malformed_payload_returns_422(monkeypatch) -> None:
     client = _client(monkeypatch)
     headers = {"X-API-Key": "test-key"}
     resp = client.post(
-        "/event", headers=headers, json={"events": [{"user_id": "x", "op": "*", "day": "2025-10-01"}]}
+        "/event",
+        headers=headers,
+        json={"events": [{"user_id": "x", "op": "*", "day": "2025-10-01"}]},
     )
-    assert resp.status_code == 422
+    assert resp.status_code == 400
+    body = resp.json()
+    assert body["error"] == "invalid_request"
 
 
 def test_budget_exhaustion_returns_429(monkeypatch) -> None:

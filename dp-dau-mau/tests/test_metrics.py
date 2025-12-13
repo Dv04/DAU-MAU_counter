@@ -13,6 +13,9 @@ def test_metrics_endpoint_aggregates_requests() -> None:
         json={"events": [{"user_id": "metric", "op": "+", "day": "2025-10-08"}]},
     )
     client.get("/dau/2025-10-08", headers=headers)
-    metrics = client.get("/metrics").text
+    response = client.get("/metrics")
+    assert response.headers["content-type"].startswith("text/plain")
+    metrics = response.text
     assert "app_requests_total" in metrics
+    assert "app_requests_5xx_total" in metrics
     assert "app_request_latency_seconds_bucket" in metrics

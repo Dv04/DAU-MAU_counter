@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/service/auth.py
+# hypothesis_version: 6.140.3
+
+['API-Key', 'WWW-Authenticate', 'X-API-Key', 'error', 'hint', 'unauthorized']

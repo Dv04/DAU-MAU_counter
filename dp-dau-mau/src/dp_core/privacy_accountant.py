@@ -5,7 +5,8 @@ from __future__ import annotations
 import datetime as dt
 import math
 import sqlite3
-from collections.abc import Iterable
+import time
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -23,6 +24,7 @@ class BudgetCaps:
 @dataclass(slots=True)
 class BudgetSnapshot:
     metric: str
+    day: str
     period: str
     epsilon_cap: float
     epsilon_spent: float
@@ -35,10 +37,13 @@ class BudgetSnapshot:
     advanced_delta: float | None = None
     release_count: int = 0
     rdp_orders: tuple[float, ...] = field(default_factory=tuple)
+    composition: str = "naive"
+    notes: str = ""
 
     def as_dict(self) -> dict[str, object]:
         return {
             "metric": self.metric,
+            "day": self.day,
             "period": self.period,
             "epsilon_cap": self.epsilon_cap,
             "epsilon_spent": self.epsilon_spent,
@@ -53,8 +58,8 @@ class BudgetSnapshot:
             "rdp_orders": list(self.rdp_orders),
             "policy": {
                 "monthly_cap": self.epsilon_cap,
-                "delta": self.delta,
-                "advanced_delta": self.advanced_delta,
+                "composition": self.composition,
+                "notes": self.notes,
             },
         }
 
@@ -89,9 +94,9 @@ class PrivacyAccountant:
                 metric TEXT NOT NULL,
                 day TEXT NOT NULL,
                 period TEXT NOT NULL,
-                order_value REAL NOT NULL,
-                rdp REAL NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                alpha REAL NOT NULL,
+                epsilon REAL NOT NULL,
+                ts INTEGER NOT NULL
             )
             """
         )
@@ -156,36 +161,65 @@ class PrivacyAccountant:
         )
         self._conn.commit()
 
-    def log_rdp(self, metric: str, day: dt.date, order: float, rdp_value: float) -> None:
-        if order <= 1:
-            raise ValueError("RDP order must be > 1.")
-        if rdp_value < 0:
-            raise ValueError("RDP value must be non-negative.")
-        self._conn.execute(
+    def log_rdp_points(self, metric: str, day: dt.date, rdp_points: Mapping[float, float]) -> None:
+        """Persist Rényi DP curve points ε(α) for a given release."""
+        filtered: list[tuple[float, float]] = []
+        for order, value in rdp_points.items():
+            if order <= 1:
+                raise ValueError("RDP order must be greater than 1.")
+            if value < 0:
+                raise ValueError("RDP epsilon must be non-negative.")
+            filtered.append((float(order), float(value)))
+        if not filtered:
+            return
+        timestamp = int(time.time())
+        period = month_key(day)
+        entries = [
+            (metric, day.isoformat(), period, order, eps, timestamp) for order, eps in filtered
+        ]
+        self._conn.executemany(
             (
                 "INSERT INTO rdp_releases "
-                "(metric, day, period, order_value, rdp) "
-                "VALUES (?, ?, ?, ?, ?)"
+                "(metric, day, period, alpha, epsilon, ts) VALUES (?, ?, ?, ?, ?, ?)"
             ),
-            (metric, day.isoformat(), month_key(day), float(order), float(rdp_value)),
+            entries,
         )
         self._conn.commit()
 
-    def spent_rdp(self, metric: str, day: dt.date, orders: Iterable[float]) -> dict[float, float]:
+    def log_rdp(self, metric: str, day: dt.date, order: float, rdp_value: float) -> None:
+        """Backward-compatible helper logging a single RDP point."""
+        self.log_rdp_points(metric, day, {order: rdp_value})
+
+    def spent_rdp(
+        self, metric: str, day: dt.date, orders: Iterable[float] | None = None
+    ) -> dict[float, float]:
         period = month_key(day)
         cursor = self._conn.execute(
             """
-            SELECT order_value, SUM(rdp)
+            SELECT alpha, SUM(epsilon)
             FROM rdp_releases
             WHERE metric = ? AND period = ?
-            GROUP BY order_value
+            GROUP BY alpha
             """,
             (metric, period),
         )
         totals = {float(order): float(total or 0.0) for order, total in cursor.fetchall()}
-        for order in orders:
-            totals.setdefault(float(order), 0.0)
+        if orders is not None:
+            for order in orders:
+                totals.setdefault(float(order), 0.0)
         return totals
+
+    def _rdp_curve_for_day(self, metric: str, day: dt.date) -> dict[float, float]:
+        cursor = self._conn.execute(
+            """
+            SELECT alpha, SUM(epsilon)
+            FROM rdp_releases
+            WHERE metric = ? AND day = ?
+            GROUP BY alpha
+            """,
+            (metric, day.isoformat()),
+        )
+        return {float(alpha): float(total or 0.0) for alpha, total in cursor.fetchall()}
 
     def _fetch_releases(
         self,
@@ -204,6 +238,44 @@ class PrivacyAccountant:
         )
         return [(float(epsilon), float(delta)) for epsilon, delta in cursor.fetchall()]
 
+    def get_day_epsilon(self, metric: str, day: dt.date, delta: float) -> float:
+        """Return composed ε for a specific day, falling back to naive summation."""
+        curve = self._rdp_curve_for_day(metric, day)
+        best = self.best_epsilon_from_rdp(delta, curve)
+        if best is not None:
+            return best
+        cursor = self._conn.execute(
+            "SELECT COALESCE(SUM(epsilon), 0) FROM releases WHERE metric = ? AND day = ?",
+            (metric, day.isoformat()),
+        )
+        (value,) = cursor.fetchone()
+        return float(value or 0.0)
+
+    def get_monthly_spent(self, metric: str, month_key_value: str, delta: float) -> float:
+        """Return ε spent in a month using RDP when available, else naive composition."""
+        try:
+            year, month = (int(part) for part in month_key_value.split("-", 1))
+        except ValueError:
+            raise ValueError("month_key must be in YYYY-MM format") from None
+        period_day = dt.date(year, month, 1)
+        curve = self.spent_rdp(metric, period_day, None)
+        best, _ = self._best_from_curve(delta, curve)
+        if best is not None:
+            return best
+        cursor = self._conn.execute(
+            "SELECT COALESCE(SUM(epsilon), 0) FROM releases WHERE metric = ? AND period = ?",
+            (metric, month_key_value),
+        )
+        (value,) = cursor.fetchone()
+        return float(value or 0.0)
+
+    def get_remaining_budget(
+        self, metric: str, month_key_value: str, cap: float, delta: float
+    ) -> float:
+        """Return remaining ε budget for the month."""
+        spent = self.get_monthly_spent(metric, month_key_value, delta)
+        return max(0.0, cap - spent)
+
     @staticmethod
     def _advanced_epsilon_delta(
         releases: Iterable[tuple[float, float]],
@@ -220,6 +292,30 @@ class PrivacyAccountant:
         total_delta = sum(delta for _epsilon, delta in releases_list) + delta_prime
         return eps_bound, total_delta
 
+    @staticmethod
+    def _best_from_curve(
+        delta: float, rdp_points: Mapping[float, float]
+    ) -> tuple[float | None, float | None]:
+        if delta <= 0 or delta >= 1:
+            return None, None
+        log_term = math.log(1.0 / delta)
+        best_eps: float | None = None
+        best_order: float | None = None
+        for order, rdp_value in rdp_points.items():
+            if order <= 1:
+                continue
+            epsilon = float(rdp_value) + log_term / (float(order) - 1.0)
+            if best_eps is None or epsilon < best_eps:
+                best_eps = epsilon
+                best_order = float(order)
+        return best_eps, best_order
+
+    @staticmethod
+    def best_epsilon_from_rdp(delta: float, rdp_points: Mapping[float, float]) -> float | None:
+        """Convert an RDP curve ε_α into (ε, δ) using ε = ε_α + log(1/δ)/(α - 1)."""
+        best_eps, _ = PrivacyAccountant._best_from_curve(delta, rdp_points)
+        return best_eps
+
     def best_rdp_epsilon(
         self,
         metric: str,
@@ -227,19 +323,8 @@ class PrivacyAccountant:
         delta: float,
         orders: Iterable[float],
     ) -> tuple[float | None, float | None]:
-        if delta <= 0:
-            return None, None
         totals = self.spent_rdp(metric, day, orders)
-        best_eps: float | None = None
-        best_order: float | None = None
-        log_term = math.log(1.0 / delta)
-        for order, rdp_total in totals.items():
-            if order <= 1:
-                continue
-            eps = rdp_total + log_term / (order - 1.0)
-            if best_eps is None or eps < best_eps:
-                best_eps = eps
-                best_order = order
+        best_eps, best_order = self._best_from_curve(delta, totals)
         return best_eps, best_order
 
     def budget_snapshot(
@@ -251,17 +336,28 @@ class PrivacyAccountant:
         orders: Iterable[float],
         advanced_delta: float,
     ) -> BudgetSnapshot:
-        spent = self.spent_budget(metric, day)
-        remaining = max(0.0, cap - spent)
+        period = month_key(day)
+        spent_naive = self.spent_budget(metric, day)
         rdp_totals = self.spent_rdp(metric, day, orders)
         best_eps, best_order = self.best_rdp_epsilon(metric, day, delta, orders)
+        using_rdp = delta > 0 and best_eps is not None
+        epsilon_spent = best_eps if using_rdp and best_eps is not None else spent_naive
+        remaining = max(0.0, cap - epsilon_spent)
         releases = self._fetch_releases(metric, day)
         adv_eps, adv_delta = self._advanced_epsilon_delta(releases, advanced_delta)
+        composition = "rdp" if using_rdp else "naive"
+        if using_rdp:
+            notes = "Composed via Rényi DP ledger across month."
+        elif delta <= 0:
+            notes = "Delta is zero; falling back to naive ε summation."
+        else:
+            notes = "No RDP orders configured; falling back to naive ε summation."
         return BudgetSnapshot(
             metric=metric,
-            period=month_key(day),
+            day=day.isoformat(),
+            period=period,
             epsilon_cap=cap,
-            epsilon_spent=spent,
+            epsilon_spent=epsilon_spent,
             epsilon_remaining=remaining,
             delta=delta,
             best_rdp_epsilon=best_eps,
@@ -270,7 +366,9 @@ class PrivacyAccountant:
             advanced_epsilon=adv_eps,
             advanced_delta=adv_delta,
             release_count=len(releases),
-            rdp_orders=tuple(sorted(float(order) for order in orders)),
+            rdp_orders=tuple(sorted(float(order) for order in rdp_totals.keys())),
+            composition=composition,
+            notes=notes,
         )
 
     def close(self) -> None:

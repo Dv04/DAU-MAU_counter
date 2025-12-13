@@ -68,6 +68,17 @@ class Ledger:
         )
         self._conn.commit()
 
+    def record_activity_batch(self, entries: list[ActivityEntry]) -> None:
+        """Batch insert activity entries for efficiency (used for tombstones)."""
+        if not entries:
+            return
+        with self._conn:
+            self._conn.executemany(
+                """INSERT INTO activity_log (day, user_key, user_root, op, metadata)
+                   VALUES (?, ?, ?, ?, ?)""",
+                [(e.day, e.user_key, e.user_root, e.op, e.metadata) for e in entries],
+            )
+
     def record_erasure(self, entry: ErasureEntry) -> int:
         self._conn.execute(
             """

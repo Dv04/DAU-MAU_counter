@@ -6,7 +6,6 @@ from dp_core.sketches.base import SketchConfig
 from dp_core.sketches.kmv_impl import KMVSketch
 from dp_core.sketches.set_impl import SetSketch
 
-
 SKETCH_CFG = SketchConfig(k=256, use_bloom_for_diff=False, bloom_fp_rate=0.01)
 
 

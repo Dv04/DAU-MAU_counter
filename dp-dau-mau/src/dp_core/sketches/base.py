@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -23,16 +23,16 @@ class DistinctSketch(ABC):
     def add(self, key: bytes) -> None: ...
 
     @abstractmethod
-    def union(self, other: "DistinctSketch") -> None: ...
+    def union(self, other: DistinctSketch) -> None: ...
 
     @abstractmethod
-    def a_not_b(self, other: "DistinctSketch") -> "DistinctSketch": ...
+    def a_not_b(self, other: DistinctSketch) -> DistinctSketch: ...
 
     @abstractmethod
     def estimate(self) -> float: ...
 
     @abstractmethod
-    def copy(self) -> "DistinctSketch": ...
+    def copy(self) -> DistinctSketch: ...
 
     @abstractmethod
     def compact(self) -> None: ...
@@ -42,7 +42,7 @@ class DistinctSketch(ABC):
 
     @classmethod
     @abstractmethod
-    def deserialize(cls, payload: bytes, config: SketchConfig) -> "DistinctSketch": ...
+    def deserialize(cls, payload: bytes, config: SketchConfig) -> DistinctSketch: ...
 
 
 SketchBuilder = Callable[[SketchConfig], DistinctSketch]

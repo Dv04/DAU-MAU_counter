@@ -9,7 +9,7 @@ description = "Differentially private DAU/MAU counter with deletion support"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-authors = [{ name = "DP Engineering Team" }]
+authors = [{ name = "Dev Sanghvi, Lazeen Manasia" }]
 dependencies = [
   "fastapi>=0.111,<0.113",
   "uvicorn[standard]>=0.30,<0.32",
@@ -41,15 +41,13 @@ target-version = ["py313"]
 include = "\\.pyi?$"
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py312"
 line-length = 100
 extend-exclude = ["eval/notebooks"]
-
-[tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "DTZ"]
 ignore = ["N805"]
 
-[tool.ruff.lint.isort]
+[tool.ruff.isort]
 known-first-party = ["dp_core", "service"]
 
 [tool.mypy]
@@ -62,6 +60,15 @@ strict_optional = true
 no_implicit_optional = true
 plugins = ["pydantic.mypy"]
 exclude = ["eval/notebooks"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["datasketches"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
 
 [tool.coverage.run]
 source = ["src"]

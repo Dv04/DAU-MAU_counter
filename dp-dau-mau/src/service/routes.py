@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import datetime as dt
-import time
+from typing import Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from dp_core.pipeline import BudgetExceededError, EventRecord, PipelineManager
@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 def get_pipeline(request: Request) -> PipelineManager:
-    return request.app.state.pipeline  # type: ignore[attr-defined]
+    return cast(PipelineManager, request.app.state.pipeline)
 
 
 def _budget_error_response(pipeline: PipelineManager, exc: BudgetExceededError) -> JSONResponse:
@@ -56,59 +56,35 @@ def _budget_error_response(pipeline: PipelineManager, exc: BudgetExceededError) 
 async def post_event(
     payload: EventIngestionRequest,
     request: Request,
-    pipeline: PipelineManager = Depends(get_pipeline),
-    _: None = Depends(auth.require_api_key),
-) -> Response:
-    start = time.perf_counter()
-    status_code = status.HTTP_202_ACCEPTED
-    try:
-        events = payload.events or []
-        pipeline.ingest_batch(
-            EventRecord(
-                user_id=evt.user_id,
-                op=evt.op,
-                day=evt.day,
-                metadata=evt.metadata,
-            )
-            for evt in events
+    pipeline: PipelineManager = Depends(get_pipeline),  # noqa: B008
+    _: None = Depends(auth.require_api_key),  # noqa: B008
+) -> JSONResponse:
+    events = payload.events or []
+    pipeline.ingest_batch(
+        EventRecord(
+            user_id=evt.user_id,
+            op=cast(Literal["+", "-"], evt.op),
+            day=evt.day,
+            metadata=evt.metadata,
         )
-        response = JSONResponse({"ingested": len(events)}, status_code=status.HTTP_202_ACCEPTED)
-        return response
-    except HTTPException as exc:
-        status_code = exc.status_code
-        raise
-    except Exception:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        raise
-    finally:
-        duration = time.perf_counter() - start
-        METRICS.observe("POST", "/event", status_code, duration)
+        for evt in events
+    )
+    return JSONResponse({"ingested": len(events)}, status_code=status.HTTP_202_ACCEPTED)
 
 
 @router.get("/dau/{day}", response_model=MetricResponse)
 async def get_dau(
     day: dt.date,
     request: Request,
-    pipeline: PipelineManager = Depends(get_pipeline),
-    _: None = Depends(auth.require_api_key),
-) -> MetricResponse:
-    start = time.perf_counter()
-    status_code = status.HTTP_200_OK
-    response: Response
+    pipeline: PipelineManager = Depends(get_pipeline),  # noqa: B008
+    _: None = Depends(auth.require_api_key),  # noqa: B008
+) -> MetricResponse | JSONResponse:
     try:
         result = pipeline.get_daily_release(day)
-        result["version"] = request.app.state.config.storage.experiment_id  # type: ignore[attr-defined]
-        response = MetricResponse(**result)
     except BudgetExceededError as exc:
-        response = _budget_error_response(pipeline, exc)
-        status_code = response.status_code
-    except Exception:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        raise
-    finally:
-        duration = time.perf_counter() - start
-        METRICS.observe("GET", "/dau", status_code, duration)
-    return response
+        return _budget_error_response(pipeline, exc)
+    result["version"] = request.app.state.config.storage.experiment_id  # type: ignore[attr-defined]
+    return MetricResponse(**result)
 
 
 @router.get("/mau", response_model=MetricResponse)
@@ -116,26 +92,15 @@ async def get_mau(
     end: dt.date,
     request: Request,
     window: int | None = None,
-    pipeline: PipelineManager = Depends(get_pipeline),
-    _: None = Depends(auth.require_api_key),
-) -> MetricResponse:
-    start = time.perf_counter()
-    status_code = status.HTTP_200_OK
-    response: Response
+    pipeline: PipelineManager = Depends(get_pipeline),  # noqa: B008
+    _: None = Depends(auth.require_api_key),  # noqa: B008
+) -> MetricResponse | JSONResponse:
     try:
         result = pipeline.get_mau_release(end, window)
-        result["version"] = request.app.state.config.storage.experiment_id  # type: ignore[attr-defined]
-        response = MetricResponse(**result)
     except BudgetExceededError as exc:
-        response = _budget_error_response(pipeline, exc)
-        status_code = response.status_code
-    except Exception:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        raise
-    finally:
-        duration = time.perf_counter() - start
-        METRICS.observe("GET", "/mau", status_code, duration)
-    return response
+        return _budget_error_response(pipeline, exc)
+    result["version"] = request.app.state.config.storage.experiment_id  # type: ignore[attr-defined]
+    return MetricResponse(**result)
 
 
 @router.get("/metrics")
@@ -152,26 +117,13 @@ async def health() -> HealthResponse:
 async def get_budget(
     metric: str,
     day: dt.date,
-    pipeline: PipelineManager = Depends(get_pipeline),
-    _: None = Depends(auth.require_api_key),
+    pipeline: PipelineManager = Depends(get_pipeline),  # noqa: B008
+    _: None = Depends(auth.require_api_key),  # noqa: B008
 ) -> BudgetResponse:
-    start = time.perf_counter()
-    status_code = status.HTTP_200_OK
-    try:
-        metric_normalized = metric.lower()
-        if metric_normalized not in {"dau", "mau"}:
-            status_code = status.HTTP_400_BAD_REQUEST
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="metric must be 'dau' or 'mau'"
-            )
-        summary = pipeline.get_budget_summary(metric_normalized, day)
-        response = BudgetResponse(**summary)
-    except HTTPException:
-        raise
-    except Exception:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        raise
-    finally:
-        duration = time.perf_counter() - start
-        METRICS.observe("GET", "/budget", status_code, duration)
-    return response
+    metric_normalized = metric.lower()
+    if metric_normalized not in {"dau", "mau"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="metric must be 'dau' or 'mau'"
+        )
+    summary = pipeline.get_budget_summary(metric_normalized, day)
+    return BudgetResponse(**summary)

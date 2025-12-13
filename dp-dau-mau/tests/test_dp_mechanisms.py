@@ -43,7 +43,9 @@ def test_laplace_confidence_interval_width_matches_scale() -> None:
     result = laplace_mechanism(0.0, sensitivity=sensitivity, epsilon=epsilon, rng=rng, seed=5)
     scale = sensitivity / epsilon
     z = -scale * math.log(0.05 / 2)
-    assert math.isclose(result.confidence_interval[1] - result.confidence_interval[0], 2 * z, rel_tol=1e-6)
+    assert math.isclose(
+        result.confidence_interval[1] - result.confidence_interval[0], 2 * z, rel_tol=1e-6
+    )
 
 
 def test_gaussian_confidence_interval_width_matches_sigma() -> None:
@@ -51,7 +53,11 @@ def test_gaussian_confidence_interval_width_matches_sigma() -> None:
     epsilon = 0.5
     delta = 1e-5
     sensitivity = 1.0
-    result = gaussian_mechanism(0.0, sensitivity=sensitivity, epsilon=epsilon, delta=delta, rng=rng, seed=7)
+    result = gaussian_mechanism(
+        0.0, sensitivity=sensitivity, epsilon=epsilon, delta=delta, rng=rng, seed=7
+    )
     sigma = math.sqrt(2 * math.log(1.25 / delta)) * sensitivity / epsilon
     expected_width = 2 * 1.959963984540054 * sigma
-    assert math.isclose(result.confidence_interval[1] - result.confidence_interval[0], expected_width, rel_tol=1e-6)
+    assert math.isclose(
+        result.confidence_interval[1] - result.confidence_interval[0], expected_width, rel_tol=1e-6
+    )

@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1760076931.26356 "/Users/apple/DAU-MAU_counter/paper/paper.tex" "paper.pdf" "paper" 1760076931.76571 0
-  "/Users/apple/DAU-MAU_counter/paper/paper.tex" 1760076931.56807 17334 d0ec23cbde608de125e4e0eb4f9582b2 ""
+["pdflatex"] 1765591893.16749 "/Users/apple/DAU-MAU_counter/paper/paper.tex" "paper.pdf" "paper" 1765591894.51431 0
+  "/Users/apple/DAU-MAU_counter/paper/paper.tex" 1765591892.76351 17333 d1cc87bce49051703c04ff780d97fc13 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1136849721 2971 def0b6c1f0b107b3b936def894055589 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -120,9 +120,9 @@
   "/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1757019470 5467155 19efa205003f9ecad95fbbaa6ff24da1 ""
   "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1741450574 3345740 46b66fdb0378f7bf5921b5eabf1762b8 ""
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
-  "paper.aux" 1760076931.68148 4064 82c372f1e07ea4c75d1d90c167d55394 "pdflatex"
-  "paper.out" 1760076931.68211 1837 c2eef7793afcf5ab56f1b0489eca4864 "pdflatex"
-  "paper.tex" 1760076931.56807 17334 d0ec23cbde608de125e4e0eb4f9582b2 ""
+  "paper.aux" 1765591894.18569 4064 82c372f1e07ea4c75d1d90c167d55394 "pdflatex"
+  "paper.out" 1765591894.187 1837 c2eef7793afcf5ab56f1b0489eca4864 "pdflatex"
+  "paper.tex" 1765591892.76351 17333 d1cc87bce49051703c04ff780d97fc13 ""
   (generated)
   "paper.aux"
   "paper.log"

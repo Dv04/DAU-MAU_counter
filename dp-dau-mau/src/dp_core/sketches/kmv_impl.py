@@ -17,7 +17,7 @@ PERSON = b"dpdau-kmv"
 
 
 def _hash_key(key: bytes) -> int:
-    digest = hashlib.blake2b(key, digest_size=8, person=PERSON)
+    digest = hashlib.blake2b(key, digest_size=8, person=PERSON).digest()
     return int.from_bytes(digest, "big", signed=False)
 
 
@@ -38,7 +38,7 @@ class _BloomMembership:
     bits: bytearray
 
     @classmethod
-    def build(cls, values: Iterable[int], fp_rate: float) -> "_BloomMembership":
+    def build(cls, values: Iterable[int], fp_rate: float) -> _BloomMembership:
         vals = list(values)
         n = max(len(vals), 1)
         fp = min(max(fp_rate, 1e-6), 1 - 1e-6)
@@ -53,7 +53,7 @@ class _BloomMembership:
 
     def _hash(self, value: int, seed: int) -> int:
         data = value.to_bytes(8, "big") + seed.to_bytes(2, "big")
-        digest = hashlib.blake2b(data, digest_size=8, person=b"kmv-bloom")
+        digest = hashlib.blake2b(data, digest_size=8, person=b"kmv-bloom").digest()
         return int.from_bytes(digest, "big", signed=False) % self.m
 
     def _add(self, value: int) -> None:
@@ -122,7 +122,7 @@ class KMVSketch(DistinctSketch):
             return _BloomMembership.build(self._hashes, self._config.bloom_fp_rate)
         return _PlainMembership(self._hashes)
 
-    def a_not_b(self, other: DistinctSketch) -> "KMVSketch":
+    def a_not_b(self, other: DistinctSketch) -> KMVSketch:
         if not isinstance(other, KMVSketch):
             raise TypeError("KMVSketch a_not_b requires another KMVSketch.")
         membership = other._membership()
@@ -145,7 +145,7 @@ class KMVSketch(DistinctSketch):
             return float(len(self._hashes))
         return float((self._config.k - 1) / tau)
 
-    def copy(self) -> "KMVSketch":
+    def copy(self) -> KMVSketch:
         return KMVSketch(self._config, self._hashes)
 
     def compact(self) -> None:
@@ -160,7 +160,7 @@ class KMVSketch(DistinctSketch):
         return header + arr.tobytes()
 
     @classmethod
-    def deserialize(cls, payload: bytes, config: SketchConfig) -> "KMVSketch":
+    def deserialize(cls, payload: bytes, config: SketchConfig) -> KMVSketch:
         if len(payload) < 8:
             raise ValueError("Invalid KMV sketch payload.")
         k, count = struct.unpack("!II", payload[:8])

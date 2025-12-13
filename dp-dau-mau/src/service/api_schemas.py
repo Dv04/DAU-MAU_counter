@@ -71,6 +71,7 @@ class MetricResponse(BaseModel):
 
 class BudgetResponse(BudgetSummary):
     metric: str
+    day: str
     period: str
 
 

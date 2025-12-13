@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/cli/dpdau.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.1, 0.2, 1.0, 30.0, 100, 400, 20251009, '+', '-', '--api-key', '--day', '--days', '--delete-rate', '--end', '--format', '--from', '--host', '--out', '--p-active', '--seed', '--start', '--users', '--window', '-d', '-e', '-f', '-m', '-o', '-u', '-w', '.csv', '.json', '.jsonl', '/', '/event', '/mau', 'Content-Type', 'GET', 'POST', 'Random seed', 'Rotation cadence', 'SERVICE_API_KEY', 'SERVICE_HOST', 'X-API-Key', 'X-API-Key header', '__main__', '_transport', 'application/json', 'csv', 'dau', 'day', 'day_offset', 'days', 'effective', 'end', 'events', 'flush-deletes', 'generate-synthetic', 'handle_async_request', 'handle_request', 'jsonl', 'mau', 'metadata', 'metadata.', 'op', 'r', 'reset-budget', 'rotate-salt', 'source', 'src', 'start', 'streams', 'synthetic', 'user_id', 'utf-8', 'w', 'window']

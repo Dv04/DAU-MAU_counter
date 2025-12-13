@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/dp_core/privacy_accountant.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-09, 1.0, 2.0, '%Y-%m', '-', 'advanced_delta', 'advanced_epsilon', 'best_rdp_epsilon', 'best_rdp_order', 'composition', 'day', 'delta', 'epsilon_cap', 'epsilon_remaining', 'epsilon_spent', 'metric', 'monthly_cap', 'naive', 'notes', 'period', 'policy', 'rdp', 'rdp_curve', 'rdp_orders', 'release_count']

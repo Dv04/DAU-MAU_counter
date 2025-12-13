@@ -32,4 +32,44 @@ jobs:
           mypy src cli tests
 
       - name: Tests
-        run: pytest --cov=dp_core --cov=service --cov-report=xml --maxfail=1
+        env:
+          COVERAGE_THRESHOLD: "{{COVERAGE_THRESHOLD}}"
+        run: |
+          pytest --maxfail=1 --disable-warnings -q --cov=src --cov-report=term-missing --cov-report=xml
+
+      - name: Coverage Gate
+        env:
+          COVERAGE_THRESHOLD: "{{COVERAGE_THRESHOLD}}"
+        run: |
+          python - <<'PY'
+import os
+import sys
+import xml.etree.ElementTree as ET
+
+threshold = float(os.environ["COVERAGE_THRESHOLD"])
+tree = ET.parse("coverage.xml")
+root = tree.getroot()
+line_rate = float(root.get("line-rate", 0.0)) * 100.0
+if line_rate + 1e-9 < threshold:
+    print(f"Coverage {line_rate:.2f}% below threshold {threshold}%", file=sys.stderr)
+    sys.exit(1)
+print(f"Coverage {line_rate:.2f}% ≥ threshold {threshold}%")
+PY
+
+      - name: Budget Snapshot
+        env:
+          DATA_DIR: ${{ github.workspace }}/.ci-data
+        run: |
+          python tools/export_budget_report.py --out "$DATA_DIR/reports/budget-snapshot.json"
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+      - name: Upload Budget Snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-snapshot
+          path: ${{ github.workspace }}/.ci-data/reports/budget-snapshot.json

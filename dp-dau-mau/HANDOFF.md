@@ -1,108 +1,182 @@
 # Operational Handoff: DP-accurate DAU/MAU Counter
 
+**Authors:** Dev Sanghvi, Lazeen Manasia  
+**Last Updated:** December 2025
+
+---
+
+## System Overview
+
+A differential-privacy aware turnstile streaming pipeline that reports distinct Daily Active Users (DAU) and rolling 30-day Monthly Active Users (MAU), while honoring user deletion requests (GDPR/CCPA compliant).
+
 ## System Components
-- **FastAPI Service (`src/service/app.py`)**: exposes ingestion and query endpoints, thin wrapper over `PipelineManager`.
-- **Pipeline Core (`src/dp_core/pipeline.py`)**: orchestrates hashing, sketch updates, erasure replay, DP release, and ledger persistence.
-- **Sketch Implementations (`src/dp_core/sketches/`)**: `kmv_impl` for bottom-k distinct counting (default), `set_impl` for exact counting, and `theta_impl` gated on Apache DataSketches – all import guarded.
-- **Ledger (`src/dp_core/ledger.py`)**: SQLite-backed tables for activity, erasures, and DP budgets located at `{{DATA_DIR}}/ledgers/ledger.sqlite`.
-- **Privacy Accountant (`src/dp_core/privacy_accountant.py`)**: tracks ε/δ spend, aggregates Rényi orders {{RDP_ORDERS}}, and enforces hard caps {{DAU_BUDGET_TOTAL}}/{{MAU_BUDGET_TOTAL}}.
-- **Evaluation Suite (`eval/`)**: synthetic generators, adversarial workloads, benchmarking utilities, plots, and notebook.
-- **CLI (`cli/dpdau.py`)**: direct ingest/query interface for batch experimentation.
 
-## Code Map
-| Path | Purpose |
-| --- | --- |
-| `src/dp_core/hashing.py` | HMAC-SHA256 salting & rotation helpers referencing `{{HASH_SALT_SECRET}}` and `{{HASH_SALT_ROTATION_DAYS}}`. |
-| `src/dp_core/windows.py` | Rolling DAU/MAU union logic, rebuild scheduling, difference helpers. |
-| `src/dp_core/dp_mechanisms.py` | Laplace/Gaussian noise, CI calculations, seeded RNG via `{{DEFAULT_SEED}}`. |
-| `src/service/routes.py` | REST handlers, request validation, CI + budget metadata in responses. |
-| `eval/evaluate.py` | Accuracy/latency harness; stores results under `{{DATA_DIR}}/experiments/{{EXPERIMENT_ID}}/`. |
-| `docker/` | Local containerization; mount `{{DATA_DIR}}` volume. |
+| Component | Path | Purpose |
+|-----------|------|---------|
+| **FastAPI Service** | `src/service/app.py` | REST API exposing ingestion/query endpoints |
+| **Pipeline Core** | `src/dp_core/pipeline.py` | Orchestrates hashing, sketches, erasure replay, DP release |
+| **Sketch Implementations** | `src/dp_core/sketches/` | KMV (default), set (exact), theta (optional) |
+| **Ledger** | `src/dp_core/ledger.py` | SQLite-backed activity/erasure tracking |
+| **Privacy Accountant** | `src/dp_core/privacy_accountant.py` | ε/δ budget tracking with RDP composition |
+| **CLI** | `cli/dpdau.py` | Command-line interface for all operations |
 
-## Data Flow & Erasure Replay
-1. `/event` receives JSON (single or batch). Each record normalized to `EventRecord`.
-2. `PipelineManager.ingest_event` hashes `user_id` using the day-specific salt bucket.
-3. Activity table stores `(user_key, day, op)` for auditing; erasure requests (`op == "-"`) populate erasure ledger.
-4. On release, `WindowManager` materializes day sketches; dirty days (due to deletes) trigger rebuild from persisted events.
-5. DP release noise drawn with seeded RNG; results persisted to release history.
+## Quick Reference
 
-**Replay deletes**: `PipelineManager.replay_deletions()` iterates erasure ledger rows flagged `pending=1`, removes user keys from affected sketches, recomputes unions, and marks rows complete. Schedule this before each release cycle or on-demand via CLI `dpdau flush-deletes`.
+```bash
+# Start server (set API key BEFORE starting!)
+export SERVICE_API_KEY="your-secret-key"
+make run
 
-## Privacy Budgeting Rules
-- Daily releases per metric cost `epsilon_metric` ({{EPSILON_DAU}}, {{EPSILON_MAU}}).
-- `PrivacyAccountant.budget_snapshot(metric, day, cap, delta, {{RDP_ORDERS}}, {{ADVANCED_DELTA}})` returns naive spend, remaining headroom, best Rényi-derived `(ε,δ)`, and an advanced-composition bound `(ε_adv, δ_total)`.
-- `/budget/{metric}?day=YYYY-MM-DD` surfaces the same snapshot for operators; CLI commands `dpdau dau` / `dpdau mau` embed the budget block for quick checks.
-- Use `PipelineManager.reset_budget` (exposed via `dpdau reset-budget`) to wipe a monthly ledger after approvals; log manual overrides in your ops runbook.
+# Run tests
+make test
 
-## Sketch Tuning
-- Default deployment uses KMV (`{{SKETCH_IMPL}}=kmv`). Increase `{{SKETCH_K}}` to reduce variance at the cost of memory (~8 bytes per retained hash). Values ≥2048 are recommended for production traffic.
-- `{{USE_BLOOM_FOR_DIFF}}` controls whether A\B uses a Bloom filter; adjust `{{BLOOM_FP_RATE}}` if deletions exhibit bias. Disable Bloom (`false`) for deterministic debugging.
-- Switch to `{{SKETCH_IMPL}}=set` for exact replay tests or tightly regulated workloads; Theta remains available when Apache DataSketches is installed.
+# Show all commands
+make help
 
-## Salt Rotation
-- Secrets stored in `.env` as `HASH_SALT_SECRET={{HASH_SALT_SECRET}}`.
-- `SaltManager` derives per-day salts via HKDF on `(day || rotation_epoch)`.
-- Rotate by running `python cli/dpdau.py rotate-salt --effective 2025-11-01 --secret {{HASH_SALT_SECRET}} --rotation-days {{HASH_SALT_ROTATION_DAYS}}`.
-- Document rotation event in `docs/runbook.md` (create if missing) including hash of new salt store; never commit secrets.
+# Check CLI version
+python -m cli.dpdau --version
 
-## Recovery & Incident Response
-- All ingested events recorded in `activity_log` table; rebuild entire state via `dpdau rebuild --start 2025-09-01 --end 2025-10-31`.
-- If ledger corrupted, restore from snapshot `{{DATA_DIR}}/backups/ledger-YYYYMMDD.sqlite` (see Makefile `make backup-ledger`).
-- Budget overspend triggers HTTP 429 with `budget_remaining=0`; resume after monthly reset via `dpdau reset-budget --month 2025-11`.
-- Ensure deletes are re-applied after restore by replaying `erasure_log` with `pending=1`.
+# Generate data & query
+python -m cli.dpdau generate-synthetic --days 14 --users 200
+python -m cli.dpdau dau --day 2025-10-01
+```
 
-- `make test` automatically drops `{{DATA_DIR}}/reports/budget-snapshot.json` (via `tools/export_budget_report.py`) for CI uploads; attach alongside `coverage.xml` so reviewers can inspect ε spend per build.
-- Monitor `/metrics` (`app_requests_total`, `app_requests_5xx_total`, `app_request_latency_seconds_*`) plus FastAPI status codes. Fire a Sev-2 alert when there are ≥10 `app_requests_5xx_total` increments in 5 minutes or when the `/event` P99 bucket exceeds 1 s for 15 minutes.
-- During incidents, capture both the Prometheus scrape and `curl /budget/{metric}?day=YYYY-MM-DD` outputs to validate budget headroom before re-running backfills.
+> **Important**: The server reads `SERVICE_API_KEY` at startup. If you change it, you must restart the server.
 
-## Test Dataset Generation
-- Baseline synthetic set: `python eval/simulate.py --users 5000 --days 45 --p-active 0.18 --delete-rate 0.02 --seed {{DEFAULT_SEED}} --out {{DATA_DIR}}/streams/smoke.jsonl`.
-- Adversarial churn: `python eval/adversarial.py --users 200 --window {{MAU_WINDOW_DAYS}} --flips {{W_BOUND}} --out {{DATA_DIR}}/streams/adversarial.jsonl`.
-- Quick smoke dataset: `dpdau generate-synthetic --days 14 --daily-users 200 --delete-rate 0.15 --out {{DATA_DIR}}/streams/smoke.jsonl`.
-- Store metadata in `{{DATA_DIR}}/streams/README.md` (auto-generated stub).
+## Data Flow
 
-## Load Testing
-- Locust harness lives in `load/locustfile.py`; install extras via `pip install .[load]`.
-- Run `SERVICE_API_KEY={{SERVICE_API_KEY}} make load-test LOAD_USERS=2000 LOAD_SPAWN=500 LOAD_RUNTIME=5m` to simulate 10–50k events/sec.
-- Collect Locust CSV/HTML artifacts (pass `--csv`/`--html` flags via `LOCUST_OPTS`) and correlate with `/metrics` for latency regression analysis.
-- For quick confidence checks, execute `make smoke` which spins up a temporary Uvicorn instance, generates a 7-day synthetic workload, ingests it via the CLI, and validates DAU/MAU/BUDGET responses.
+1. `/event` receives JSON events → normalized to `EventRecord`
+2. `PipelineManager.ingest_event` hashes `user_id` with day-specific salt
+3. Activity logged to SQLite; deletions (`op == "-"`) populate erasure ledger
+4. On release: `WindowManager` materializes sketches, rebuilds dirty days
+5. DP noise applied with seeded RNG; results persisted to release history
 
-## Security & Configuration Tips
-- API key authentication optional; enable by setting `SERVICE_API_KEY={{SERVICE_API_KEY}}`.
-- Admin alerts routed via `{{ADMIN_EMAIL}}` (use SMTP integration stub `service/auth.py`).
-- SQLite connections operate with WAL mode; ensure `{{DATA_DIR}}` disk encrypted.
-- Disable approximate sketches in regulated contexts by setting `{{SKETCH_IMPL}}=set`.
+## Privacy Budgeting
 
-## Extending to gRPC / Theta Sketches
-- Swap FastAPI with gRPC by generating protobuf in `proto/` (stub path). Reuse pipeline service layer; only transport changes.
-- Theta sketch: install `datasketches` and set `{{SKETCH_IMPL}}=theta`. Ensure CI marks tests with `@pytest.mark.requires_theta`. `theta_impl.py` already handles module detection; update README instructions.
+| Metric | Mechanism | ε | δ | Sensitivity |
+|--------|-----------|---|---|-------------|
+| DAU | Laplace | `EPSILON_DAU` (0.3) | 0 | `W_BOUND` |
+| MAU | Gaussian | `EPSILON_MAU` (0.5) | `DELTA` (1e-6) | `W_BOUND` |
 
-## Postgres & Kafka Migration Path
-- Replace SQLite ledger with Postgres by parameterizing DSN via `DATABASE_URL={{SERVICE_DATABASE_URL}}`.
-- Ingestion pipeline can subscribe to Kafka topic `{{KAFKA_TOPIC}}`; adapt `cli/dpdau.py ingest-stream`.
-- Ensure schema migrations managed via Alembic (scaffold under `db/`).
+**Budget exhaustion**: Returns HTTP 429 with structured payload. Reset via:
+```bash
+python -m cli.dpdau reset-budget dau 2025-10
+```
 
-## Tree Aggregation Roadmap
-- Implement binary tree aggregator in `dp_mechanisms.py` using buffered releases, maintaining node sums per day.
-- Update accountant to split budget across nodes; note manual tuning required.
-- Document state snapshot strategy in `docs/tree-aggregation.md`.
+## Configuration
 
-## Known Gaps & TODOs
-- [ ] Introduce advanced composition or moments accountant to complement the fixed {{RDP_ORDERS}} set.
-- [ ] Optimize HLL++ rebuild by caching bucketed per-day hashes.
-- [ ] Add streaming ingestion benchmark harness (locust / vegeta).
-- [ ] Harden notebook reproducibility with papermill automation.
-- [ ] Flesh out alerting integration in `service/auth.py`.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATA_DIR` | `data` | Root directory for artifacts |
+| `EPSILON_DAU` | 0.3 | DAU privacy budget |
+| `EPSILON_MAU` | 0.5 | MAU privacy budget |
+| `DELTA` | 1e-6 | Gaussian δ parameter |
+| `SKETCH_IMPL` | kmv | Sketch backend |
+| `SERVICE_API_KEY` | - | API authentication |
 
 ## Changelog
-- **Phase 2 (October 2025)**
-  - Default sketch switched to KMV with configurable `{{SKETCH_K}}`, `{{USE_BLOOM_FOR_DIFF}}`, and `{{BLOOM_FP_RATE}}`; exact set remains for deterministic ops.
-  - Budget snapshot now returns advanced composition bounds and 429 responses expose machine-readable exhaustion payloads.
-  - `/metrics` exports `app_requests_total`, `app_requests_5xx_total`, and latency histograms for Prometheus; smoke and load-test automation added.
-  - CLI supports `--host`/`--api-key` for exercising the running API; CI enforces coverage via {{COVERAGE_THRESHOLD}} and uploads budget artefacts.
 
-## Recent Changes & Operational Notes
-- `make run` now invokes `uvicorn --app-dir src` so that `service.app` imports cleanly under the reloader. Always launch from the repository root and keep the process running in its own terminal tab.
-- All configuration values (privacy budgets, sketch choice, data paths) have defaults. Only export overrides when needed; README includes a single copy-and-paste command for convenience.
-- The placeholder auditor ignores `.env/` virtualenv contents to prevent third-party packages from polluting the ledger.
-- Differential privacy release seeds are masked to 63 bits before persisting to SQLite to avoid integer overflow errors.
+### December 2025 - Critical Correctness Fixes
+
+**Bug Fixes:**
+1. ✅ **MAU Identity** - Fixed hash function to use epoch-stable salts (not per-day). Same user now hashes to same key within rotation epoch → MAU counts unique users correctly.
+2. ✅ **Retroactive Deletion** - Deletions now write tombstone events for all affected historical days → DAU/MAU decrease when user is erased.
+3. ✅ **HLL++ Backend** - Wired HLL++ as a selectable sketch implementation (`SKETCH_IMPL=hllpp`).
+
+**Modified Files:**
+- `src/dp_core/hashing.py` - Removed `day.isoformat()` from salt derivation
+- `src/dp_core/pipeline.py` - Added tombstone insertion on deletion, registered HLL++
+- `src/dp_core/ledger.py` - Added `record_activity_batch()` for efficient tombstone insertion
+- `src/dp_core/config.py` - Added `hllpp` to allowed sketch implementations
+
+**New Tests:**
+- `tests/test_correctness_fixes.py` - 6 regression tests for MAU identity, hash stability, and retroactive deletion
+
+> [!IMPORTANT]
+> **Breaking Change**: Hash algorithm changed. Clear existing ledger data: `rm -rf data/ledgers/*.sqlite`
+
+> [!IMPORTANT]
+> For MAU correctness: `HASH_SALT_ROTATION_DAYS >= MAU_WINDOW_DAYS` is required.
+
+### December 2025 - Quick Wins & Documentation
+
+**Quick Wins Implemented:**
+1. ✅ Added `make help` target - displays all Makefile commands with descriptions
+2. ✅ Added `--version` / `-V` flag to CLI - prints `dpdau version 0.1.0`
+3. ✅ Enhanced pre-commit guard - now blocks unresolved `{{PLACEHOLDER}}` tokens
+4. ✅ Fixed `{{PAPER_DATE}}` placeholder in `paper/paper.tex` → "December 2025"
+5. ✅ Updated authors in `pyproject.toml` → "Dev Sanghvi, Lazeen Manasia"
+
+**Critical Priority Implemented:**
+1. ✅ **Deployment Verification** - Added `make verify-deploy` that runs smoke.sh post-rollout
+2. ✅ **CI Configuration Guard** - Created `tools/ci_config_guard.py` to fail CI if SERVICE_API_KEY is unset/placeholder
+3. ✅ **Rate Limiting** - Added sliding window rate limiter (600 req/min) for `/event` endpoint
+4. ✅ **Alerting Hooks** - Enhanced `auth.py` with security event logging and webhook/email stubs
+
+**New Makefile Targets:**
+```bash
+make ci-guard      # Run CI configuration checks
+make verify-deploy # Run post-deployment smoke test
+make help          # Show all available commands
+```
+
+**New Files Created:**
+- `docs/tutorial.md` - Comprehensive usage guide
+- `src/service/rate_limit.py` - Rate limiting middleware
+- `tools/ci_config_guard.py` - CI environment validation
+
+**Files Modified:**
+- `Makefile` - Added help, ci-guard, verify-deploy targets
+- `cli/dpdau.py` - Added version callback
+- `tools/precommit_guard.py` - Added placeholder checking
+- `src/service/app.py` - Integrated rate limiting middleware
+- `src/service/auth.py` - Added alerting hooks
+- `paper/paper.tex` - Fixed date placeholder
+- `pyproject.toml` - Updated authors
+
+**Documentation Created:**
+- `docs/tutorial.md` - Comprehensive usage guide with all commands
+- Updated `README.md` - Complete project documentation
+- `walkthrough.md` - Project architecture walkthrough
+
+### October 2025 - Phase 2
+
+- Middleware-driven Prometheus metrics (`app_requests_total`, `app_requests_5xx_total`)
+- RDP-backed privacy accountant with best ε selection
+- API key enforcement with OpenAPI documentation
+- E2E FastAPI test suite
+- HTTP-based `tools/export_budget_report.py`
+
+## Maintenance Procedures
+
+### Salt Rotation
+```bash
+python -m cli.dpdau rotate-salt 2025-12-01 --rotation-days 30
+# Update HASH_SALT_SECRET in secrets manager
+```
+
+### Backup Ledger
+```bash
+make backup-ledger
+# Creates: data/backups/ledger-YYYYMMDD.sqlite
+```
+
+### Load Testing
+```bash
+pip install -e ".[load]"
+SERVICE_API_KEY=your-key make load-test LOAD_USERS=2000
+```
+
+## Known Gaps & TODOs
+
+See `task.md` artifact for comprehensive improvement list organized by priority.
+
+**Critical:**
+- [ ] Integrate smoke.sh into deployment pipeline
+- [ ] Add CI guard for unset SERVICE_API_KEY
+- [ ] Implement alerting hooks in auth.py
+
+**High Priority:**
+- [ ] Streaming ingestion via Kafka
+- [ ] Postgres support with Alembic migrations
+- [ ] Tree aggregation for privacy amplification

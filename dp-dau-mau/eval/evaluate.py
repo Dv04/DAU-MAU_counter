@@ -12,7 +12,13 @@ import typer
 from dp_core import config as config_module
 from dp_core.pipeline import EventRecord, PipelineManager
 
-DEFAULT_EVENTS = Path("{{DATA_DIR}}/streams/sim.jsonl")
+
+def _default_events() -> Path:
+    cfg = config_module.AppConfig.from_env()
+    return cfg.storage.example_dataset_path
+
+
+DEFAULT_EVENTS = _default_events()
 
 app = typer.Typer(help="Run accuracy and budget evaluations.")
 

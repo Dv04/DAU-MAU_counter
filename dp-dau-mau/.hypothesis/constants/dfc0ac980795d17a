@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/service/routes.py
+# hypothesis_version: 6.140.3
+
+[0.0, '+', '-', '/budget/{metric}', '/dau/{day}', '/event', '/healthz', '/mau', '/metrics', 'budget', 'budget_exhausted', 'dau', 'epsilon_cap', 'epsilon_remaining', 'epsilon_spent', 'error', 'ingested', 'mau', 'metric', 'next_reset', 'period', 'version']

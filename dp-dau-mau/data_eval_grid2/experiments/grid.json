@@ -1,0 +1,1332 @@
+[
+  {
+    "sketch": "set",
+    "epsilon": 0.05,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 56.954403443630724,
+      "lower_95": -16.823185638648,
+      "upper_95": 130.73199252590945,
+      "epsilon_used": 0.05,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "set",
+      "budget_remaining": 99.95,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 0.05,
+        "epsilon_remaining": 99.95,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 0.1,
+          "4.0": 0.06666666666666667,
+          "8.0": 0.05714285714285714,
+          "16.0": 0.05333333333333334,
+          "32.0": 0.05161290322580645
+        },
+        "advanced_epsilon": 0.28644817619655677,
+        "advanced_delta": 1e-07,
+        "release_count": 1,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4178.425749323952,
+      "lower_95": 4136.883900868685,
+      "upper_95": 4219.967597779219,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "set",
+      "budget_remaining": 99.41187456990238,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 0.5881254300976211,
+        "epsilon_remaining": 99.41187456990238,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 0.5881254300976211,
+        "best_rdp_order": 32.0,
+        "rdp_curve": {
+          "2.0": 0.00890398744972173,
+          "4.0": 0.01780797489944346,
+          "8.0": 0.03561594979888692,
+          "16.0": 0.07123189959777385,
+          "32.0": 0.1424637991955477
+        },
+        "advanced_epsilon": 3.163206849127619,
+        "advanced_delta": 1.1e-06,
+        "release_count": 1,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4135.0
+    }
+  },
+  {
+    "sketch": "set",
+    "epsilon": 0.1,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 91.97720172181536,
+      "lower_95": 55.088407180676,
+      "upper_95": 128.86599626295472,
+      "epsilon_used": 0.1,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "set",
+      "budget_remaining": 99.85,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 0.15000000000000002,
+        "epsilon_remaining": 99.85,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 0.30000000000000004,
+          "4.0": 0.2,
+          "8.0": 0.17142857142857143,
+          "16.0": 0.16,
+          "32.0": 0.15483870967741936
+        },
+        "advanced_epsilon": 0.6478659577938174,
+        "advanced_delta": 1e-07,
+        "release_count": 2,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4178.425749323952,
+      "lower_95": 4136.883900868685,
+      "upper_95": 4219.967597779219,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "set",
+      "budget_remaining": 99.26941077070683,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 0.7305892292931687,
+        "epsilon_remaining": 99.26941077070683,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 0.7305892292931687,
+        "best_rdp_order": 32.0,
+        "rdp_curve": {
+          "2.0": 0.01780797489944346,
+          "4.0": 0.03561594979888692,
+          "8.0": 0.07123189959777385,
+          "16.0": 0.1424637991955477,
+          "32.0": 0.2849275983910954
+        },
+        "advanced_epsilon": 4.663456087715858,
+        "advanced_delta": 2.1e-06,
+        "release_count": 2,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4135.0
+    }
+  },
+  {
+    "sketch": "set",
+    "epsilon": 0.2,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 109.48860086090768,
+      "lower_95": 91.044203590338,
+      "upper_95": 127.93299813147736,
+      "epsilon_used": 0.2,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "set",
+      "budget_remaining": 99.65,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 0.35000000000000003,
+        "epsilon_remaining": 99.65,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 0.7000000000000001,
+          "4.0": 0.4666666666666667,
+          "8.0": 0.39999999999999997,
+          "16.0": 0.37333333333333335,
+          "32.0": 0.36129032258064514
+        },
+        "advanced_epsilon": 1.3582839643558435,
+        "advanced_delta": 1e-07,
+        "release_count": 3,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4178.425749323952,
+      "lower_95": 4136.883900868685,
+      "upper_95": 4219.967597779219,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "set",
+      "budget_remaining": 99.12694697151129,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 0.8730530284887164,
+        "epsilon_remaining": 99.12694697151129,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 0.8730530284887164,
+        "best_rdp_order": 32.0,
+        "rdp_curve": {
+          "2.0": 0.026711962349165192,
+          "4.0": 0.053423924698330384,
+          "8.0": 0.10684784939666077,
+          "16.0": 0.21369569879332154,
+          "32.0": 0.4273913975866431
+        },
+        "advanced_epsilon": 5.890107783187457,
+        "advanced_delta": 3.1e-06,
+        "release_count": 3,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4135.0
+    }
+  },
+  {
+    "sketch": "set",
+    "epsilon": 0.3,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 115.32573390727178,
+      "lower_95": 103.02946906022532,
+      "upper_95": 127.62199875431824,
+      "epsilon_used": 0.3,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "set",
+      "budget_remaining": 99.35,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 0.65,
+        "epsilon_remaining": 99.35,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 1.3,
+          "4.0": 0.8666666666666666,
+          "8.0": 0.7428571428571428,
+          "16.0": 0.6933333333333334,
+          "32.0": 0.6709677419354838
+        },
+        "advanced_epsilon": 2.3056007306527784,
+        "advanced_delta": 1e-07,
+        "release_count": 4,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4178.425749323952,
+      "lower_95": 4136.883900868685,
+      "upper_95": 4219.967597779219,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "set",
+      "budget_remaining": 98.98448317231573,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.015516827684264,
+        "epsilon_remaining": 98.98448317231573,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 1.015516827684264,
+        "best_rdp_order": 32.0,
+        "rdp_curve": {
+          "2.0": 0.03561594979888692,
+          "4.0": 0.07123189959777385,
+          "8.0": 0.1424637991955477,
+          "16.0": 0.2849275983910954,
+          "32.0": 0.5698551967821908
+        },
+        "advanced_epsilon": 6.975134968955366,
+        "advanced_delta": 4.1e-06,
+        "release_count": 4,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4135.0
+    }
+  },
+  {
+    "sketch": "set",
+    "epsilon": 0.5,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 119.99544034436308,
+      "lower_95": 112.6176814361352,
+      "upper_95": 127.37319925259095,
+      "epsilon_used": 0.5,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "set",
+      "budget_remaining": 98.85,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.15,
+        "epsilon_remaining": 98.85,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 2.3,
+          "4.0": 1.5333333333333332,
+          "8.0": 1.3142857142857143,
+          "16.0": 1.2266666666666668,
+          "32.0": 1.1870967741935483
+        },
+        "advanced_epsilon": 4.043743586352467,
+        "advanced_delta": 1e-07,
+        "release_count": 5,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4178.425749323952,
+      "lower_95": 4136.883900868685,
+      "upper_95": 4219.967597779219,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "set",
+      "budget_remaining": 98.8420193731202,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.1579806268798118,
+        "epsilon_remaining": 98.8420193731202,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 1.1579806268798118,
+        "best_rdp_order": 32.0,
+        "rdp_curve": {
+          "2.0": 0.04451993724860866,
+          "4.0": 0.08903987449721731,
+          "8.0": 0.17807974899443463,
+          "16.0": 0.35615949798886926,
+          "32.0": 0.7123189959777385
+        },
+        "advanced_epsilon": 7.969656288424835,
+        "advanced_delta": 5.0999999999999995e-06,
+        "release_count": 5,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4135.0
+    }
+  },
+  {
+    "sketch": "set",
+    "epsilon": 0.8,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 122.62215021522692,
+      "lower_95": 118.01105089758451,
+      "upper_95": 127.23324953286934,
+      "epsilon_used": 0.8,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "set",
+      "budget_remaining": 98.05,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.95,
+        "epsilon_remaining": 98.05,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 3.9,
+          "4.0": 2.6,
+          "8.0": 2.2285714285714286,
+          "16.0": 2.08,
+          "32.0": 2.0129032258064514
+        },
+        "advanced_epsilon": 7.236329454941259,
+        "advanced_delta": 1e-07,
+        "release_count": 6,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4162.14109332747,
+      "lower_95": 4136.177438042928,
+      "upper_95": 4188.104748612012,
+      "epsilon_used": 0.8,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "set",
+      "budget_remaining": 98.54045280184322,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.4595471981567885,
+        "epsilon_remaining": 98.54045280184322,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 1.4595471981567885,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.06731414511989628,
+          "4.0": 0.13462829023979256,
+          "8.0": 0.2692565804795851,
+          "16.0": 0.5385131609591702,
+          "32.0": 1.0770263219183405
+        },
+        "advanced_epsilon": 10.407772516128956,
+        "advanced_delta": 6.1e-06,
+        "release_count": 6,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4135.0
+    }
+  },
+  {
+    "sketch": "set",
+    "epsilon": 1.0,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 123.49772017218153,
+      "lower_95": 119.8088407180676,
+      "upper_95": 127.18659962629546,
+      "epsilon_used": 1.0,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "set",
+      "budget_remaining": 97.05,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 2.95,
+        "epsilon_remaining": 97.05,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 5.9,
+          "4.0": 3.933333333333333,
+          "8.0": 3.3714285714285714,
+          "16.0": 3.146666666666667,
+          "32.0": 3.0451612903225804
+        },
+        "advanced_epsilon": 11.279840218500524,
+        "advanced_delta": 1e-07,
+        "release_count": 7,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4156.712874661976,
+      "lower_95": 4135.941950434342,
+      "upper_95": 4177.483798889609,
+      "epsilon_used": 1.0,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "set",
+      "budget_remaining": 98.25552520345212,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.744474796547884,
+        "epsilon_remaining": 98.25552520345212,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 1.744474796547884,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.1029300949187832,
+          "4.0": 0.2058601898375664,
+          "8.0": 0.4117203796751328,
+          "16.0": 0.8234407593502656,
+          "32.0": 1.6468815187005312
+        },
+        "advanced_epsilon": 13.972594874847028,
+        "advanced_delta": 7.1e-06,
+        "release_count": 7,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4135.0
+    }
+  },
+  {
+    "sketch": "theta",
+    "epsilon": 0.05,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 56.954403443630724,
+      "lower_95": -16.823185638648,
+      "upper_95": 130.73199252590945,
+      "epsilon_used": 0.05,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "theta",
+      "budget_remaining": 97.0,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 3.0,
+        "epsilon_remaining": 97.0,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 6.0,
+          "4.0": 4.0,
+          "8.0": 3.4285714285714284,
+          "16.0": 3.2,
+          "32.0": 3.096774193548387
+        },
+        "advanced_epsilon": 11.287380377645214,
+        "advanced_delta": 1e-07,
+        "release_count": 8,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4169.392876649731,
+      "lower_95": 4127.851028194464,
+      "upper_95": 4210.9347251049985,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "theta",
+      "budget_remaining": 98.18429330385435,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.8157066961456576,
+        "epsilon_remaining": 98.18429330385435,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 1.8157066961456576,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.11183408236850494,
+          "4.0": 0.22366816473700987,
+          "8.0": 0.44733632947401974,
+          "16.0": 0.8946726589480395,
+          "32.0": 1.789345317896079
+        },
+        "advanced_epsilon": 14.70577499787133,
+        "advanced_delta": 8.1e-06,
+        "release_count": 8,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4125.967127325779
+    }
+  },
+  {
+    "sketch": "theta",
+    "epsilon": 0.1,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 91.97720172181536,
+      "lower_95": 55.088407180676,
+      "upper_95": 128.86599626295472,
+      "epsilon_used": 0.1,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "theta",
+      "budget_remaining": 96.9,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 3.1,
+        "epsilon_remaining": 96.9,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 6.2,
+          "4.0": 4.133333333333333,
+          "8.0": 3.5428571428571427,
+          "16.0": 3.3066666666666666,
+          "32.0": 3.1999999999999997
+        },
+        "advanced_epsilon": 11.317773383451744,
+        "advanced_delta": 1e-07,
+        "release_count": 9,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4169.392876649731,
+      "lower_95": 4127.851028194464,
+      "upper_95": 4210.9347251049985,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "theta",
+      "budget_remaining": 98.11306140425657,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.8869385957434317,
+        "epsilon_remaining": 98.11306140425657,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 1.8869385957434317,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.12073806981822667,
+          "4.0": 0.24147613963645334,
+          "8.0": 0.4829522792729067,
+          "16.0": 0.9659045585458134,
+          "32.0": 1.9318091170916267
+        },
+        "advanced_epsilon": 15.42297942649519,
+        "advanced_delta": 9.100000000000001e-06,
+        "release_count": 9,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4125.967127325779
+    }
+  },
+  {
+    "sketch": "theta",
+    "epsilon": 0.2,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 109.48860086090768,
+      "lower_95": 91.044203590338,
+      "upper_95": 127.93299813147736,
+      "epsilon_used": 0.2,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "theta",
+      "budget_remaining": 96.7,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 3.3000000000000003,
+        "epsilon_remaining": 96.7,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 6.6000000000000005,
+          "4.0": 4.3999999999999995,
+          "8.0": 3.7714285714285714,
+          "16.0": 3.52,
+          "32.0": 3.4064516129032256
+        },
+        "advanced_epsilon": 11.441075735864876,
+        "advanced_delta": 1e-07,
+        "release_count": 10,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4169.392876649731,
+      "lower_95": 4127.851028194464,
+      "upper_95": 4210.9347251049985,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "theta",
+      "budget_remaining": 98.04182950465879,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 1.9581704953412054,
+        "epsilon_remaining": 98.04182950465879,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 1.9581704953412054,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.1296420572679484,
+          "4.0": 0.2592841145358968,
+          "8.0": 0.5185682290717936,
+          "16.0": 1.0371364581435871,
+          "32.0": 2.0742729162871743
+        },
+        "advanced_epsilon": 16.125946414519454,
+        "advanced_delta": 1.01e-05,
+        "release_count": 10,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4125.967127325779
+    }
+  },
+  {
+    "sketch": "theta",
+    "epsilon": 0.3,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 115.32573390727178,
+      "lower_95": 103.02946906022532,
+      "upper_95": 127.62199875431824,
+      "epsilon_used": 0.3,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "theta",
+      "budget_remaining": 96.4,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 3.6,
+        "epsilon_remaining": 96.4,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 7.2,
+          "4.0": 4.8,
+          "8.0": 4.114285714285714,
+          "16.0": 3.8400000000000003,
+          "32.0": 3.7161290322580642
+        },
+        "advanced_epsilon": 11.72110623096835,
+        "advanced_delta": 1e-07,
+        "release_count": 11,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4169.392876649731,
+      "lower_95": 4127.851028194464,
+      "upper_95": 4210.9347251049985,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "theta",
+      "budget_remaining": 97.97059760506102,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 2.0294023949389794,
+        "epsilon_remaining": 97.97059760506102,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 2.0294023949389794,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.13854604471767012,
+          "4.0": 0.27709208943534025,
+          "8.0": 0.5541841788706805,
+          "16.0": 1.108368357741361,
+          "32.0": 2.216736715482722
+        },
+        "advanced_epsilon": 16.816120145578886,
+        "advanced_delta": 1.11e-05,
+        "release_count": 11,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4125.967127325779
+    }
+  },
+  {
+    "sketch": "theta",
+    "epsilon": 0.5,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 119.99544034436308,
+      "lower_95": 112.6176814361352,
+      "upper_95": 127.37319925259095,
+      "epsilon_used": 0.5,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "theta",
+      "budget_remaining": 95.9,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 4.1,
+        "epsilon_remaining": 95.9,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 8.2,
+          "4.0": 5.466666666666667,
+          "8.0": 4.685714285714285,
+          "16.0": 4.373333333333333,
+          "32.0": 4.232258064516129
+        },
+        "advanced_epsilon": 12.513609809608951,
+        "advanced_delta": 1e-07,
+        "release_count": 12,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4169.392876649731,
+      "lower_95": 4127.851028194464,
+      "upper_95": 4210.9347251049985,
+      "epsilon_used": 0.5,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "theta",
+      "budget_remaining": 97.89936570546325,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 2.100634294536753,
+        "epsilon_remaining": 97.89936570546325,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 2.100634294536753,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.14745003216739186,
+          "4.0": 0.2949000643347837,
+          "8.0": 0.5898001286695674,
+          "16.0": 1.1796002573391349,
+          "32.0": 2.3592005146782697
+        },
+        "advanced_epsilon": 17.494716000664756,
+        "advanced_delta": 1.2100000000000001e-05,
+        "release_count": 12,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4125.967127325779
+    }
+  },
+  {
+    "sketch": "theta",
+    "epsilon": 0.8,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 122.62215021522692,
+      "lower_95": 118.01105089758451,
+      "upper_95": 127.23324953286934,
+      "epsilon_used": 0.8,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "theta",
+      "budget_remaining": 95.1,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 4.9,
+        "epsilon_remaining": 95.1,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 9.8,
+          "4.0": 6.533333333333333,
+          "8.0": 5.6,
+          "16.0": 5.226666666666667,
+          "32.0": 5.058064516129032
+        },
+        "advanced_epsilon": 14.592522681307766,
+        "advanced_delta": 1e-07,
+        "release_count": 13,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4153.108220653249,
+      "lower_95": 4127.144565368707,
+      "upper_95": 4179.071875937791,
+      "epsilon_used": 0.8,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "theta",
+      "budget_remaining": 97.71701204249294,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 2.2829879575070544,
+        "epsilon_remaining": 97.71701204249294,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 2.2829879575070544,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.1702442400386795,
+          "4.0": 0.340488480077359,
+          "8.0": 0.680976960154718,
+          "16.0": 1.361953920309436,
+          "32.0": 2.723907840618872
+        },
+        "advanced_epsilon": 19.33601248315128,
+        "advanced_delta": 1.31e-05,
+        "release_count": 13,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4125.967127325779
+    }
+  },
+  {
+    "sketch": "theta",
+    "epsilon": 1.0,
+    "dau": {
+      "day": "2025-11-16",
+      "estimate": 123.49772017218153,
+      "lower_95": 119.8088407180676,
+      "upper_95": 127.18659962629546,
+      "epsilon_used": 1.0,
+      "delta": 0.0,
+      "mechanism": "laplace",
+      "sketch_impl": "theta",
+      "budget_remaining": 94.1,
+      "budget": {
+        "metric": "dau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 5.9,
+        "epsilon_remaining": 94.1,
+        "delta": 0.0,
+        "best_rdp_epsilon": null,
+        "best_rdp_order": null,
+        "rdp_curve": {
+          "2.0": 11.8,
+          "4.0": 7.866666666666666,
+          "8.0": 6.742857142857143,
+          "16.0": 6.293333333333334,
+          "32.0": 6.090322580645161
+        },
+        "advanced_epsilon": 17.81806364971368,
+        "advanced_delta": 1e-07,
+        "release_count": 14,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "naive",
+          "notes": "Delta is zero; falling back to naive \u03b5 summation."
+        }
+      },
+      "exact_value": 127.0
+    },
+    "mau": {
+      "day": "2025-11-16",
+      "window_days": 30,
+      "estimate": 4147.680001987755,
+      "lower_95": 4126.909077760121,
+      "upper_95": 4168.450926215388,
+      "epsilon_used": 1.0,
+      "delta": 1e-06,
+      "mechanism": "gaussian",
+      "sketch_impl": "theta",
+      "budget_remaining": 97.43208444410185,
+      "budget": {
+        "metric": "mau",
+        "day": "2025-11-16",
+        "period": "2025-11",
+        "epsilon_cap": 100.0,
+        "epsilon_spent": 2.5679155558981495,
+        "epsilon_remaining": 97.43208444410185,
+        "delta": 1e-06,
+        "best_rdp_epsilon": 2.5679155558981495,
+        "best_rdp_order": 16.0,
+        "rdp_curve": {
+          "2.0": 0.2058601898375664,
+          "4.0": 0.4117203796751328,
+          "8.0": 0.8234407593502656,
+          "16.0": 1.6468815187005312,
+          "32.0": 3.2937630374010625
+        },
+        "advanced_epsilon": 22.29113387386016,
+        "advanced_delta": 1.41e-05,
+        "release_count": 14,
+        "rdp_orders": [
+          2.0,
+          4.0,
+          8.0,
+          16.0,
+          32.0
+        ],
+        "policy": {
+          "monthly_cap": 100.0,
+          "composition": "rdp",
+          "notes": "Composed via R\u00e9nyi DP ledger across month."
+        }
+      },
+      "exact_value": 4125.967127325779
+    }
+  }
+]

@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/service/auth.py
+# hypothesis_version: 6.148.2
+
+['ADMIN_EMAIL', 'ALERT_WEBHOOK_URL', 'API-Key', 'WWW-Authenticate', 'X-API-Key', 'api_key_provided', 'client_ip', 'error', 'hint', 'no', 'path', 'unauthorized', 'unknown', 'yes', '{{']

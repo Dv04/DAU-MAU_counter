@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/service/app.py
+# hypothesis_version: 6.140.3
+
+['.', '/openapi.json', '; ', 'DP Duty', 'detail', 'email', 'error', 'hint', 'invalid request body', 'invalid value', 'invalid_request', 'loc', 'msg', 'name', 'request_failed', 'unknown_error', '{{ADMIN_EMAIL}}']

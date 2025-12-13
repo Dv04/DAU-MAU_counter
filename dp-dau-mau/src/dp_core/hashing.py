@@ -26,8 +26,17 @@ class SaltManager:
     rotation_days: int
 
     def salt_for_day(self, day: dt.date) -> bytes:
+        """Derive salt for a given day based on rotation epoch.
+        
+        NOTE: Salt is stable within a rotation epoch (not per-day) so that
+        the same user hashes to the same key across days. This is required
+        for MAU to count unique users (not user-days) within the window.
+        
+        IMPORTANT: For MAU correctness, HASH_SALT_ROTATION_DAYS >= MAU_WINDOW_DAYS.
+        """
         rotation_epoch = day.toordinal() // max(self.rotation_days, 1)
-        message = f"{day.isoformat()}::{rotation_epoch}".encode()
+        # Use only rotation_epoch (not day) so same user = same hash within epoch
+        message = f"epoch::{rotation_epoch}".encode()
         secret_bytes = _ensure_secret_bytes(self.secret)
         digest = hmac.new(secret_bytes, message, sha256).digest()
         return digest

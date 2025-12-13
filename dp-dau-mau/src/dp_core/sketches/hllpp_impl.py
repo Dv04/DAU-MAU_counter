@@ -24,7 +24,12 @@ class HllppSketch(DistinctSketch):
     Deletions are not supported natively; the pipeline rebuilds affected days using cached keys.
     """
 
-    def __init__(self, precision: int = 14, registers: list[int] | None = None, config: SketchConfig | None = None) -> None:
+    def __init__(
+        self,
+        precision: int = 14,
+        registers: list[int] | None = None,
+        config: SketchConfig | None = None,
+    ) -> None:
         if not 4 <= precision <= 16:
             raise ValueError("precision must be between 4 and 16")
         self.precision = precision
@@ -61,7 +66,7 @@ class HllppSketch(DistinctSketch):
             return float(-(1 << 32) * math.log(1 - raw_estimate / (1 << 32)))
         return float(raw_estimate)
 
-    def copy(self) -> "HllppSketch":
+    def copy(self) -> HllppSketch:
         return HllppSketch(self.precision, self.registers.copy(), self._config)
 
     def a_not_b(self, other: DistinctSketch) -> DistinctSketch:
@@ -82,6 +87,6 @@ class HllppSketch(DistinctSketch):
         return pickle.dumps((self.precision, self.registers))
 
     @classmethod
-    def deserialize(cls, payload: bytes, config: SketchConfig) -> "HllppSketch":
+    def deserialize(cls, payload: bytes, config: SketchConfig) -> HllppSketch:
         precision, registers = pickle.loads(payload)
         return cls(precision=precision, registers=list(registers), config=config)

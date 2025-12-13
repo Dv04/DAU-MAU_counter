@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/dp_core/pipeline.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-12, 1e-09, 1.0, 1.25, 3.0, 3.5, 9223372036854775807, '%Y-%m', '+', '-', 'DAU_BUDGET_TOTAL', 'MAU_BUDGET_TOTAL', 'big', 'budget', 'budget_remaining', 'dau', 'day', 'days', 'delta', 'dp_budget.sqlite', 'epsilon_used', 'estimate', 'exact_value', 'gaussian', 'kmv', 'ledger.sqlite', 'ledgers', 'lower_95', 'mau', 'mechanism', 'rdp_orders', 'set', 'sketch_impl', 'theta', 'upper_95', 'window_days']

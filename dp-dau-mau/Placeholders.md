@@ -29,7 +29,12 @@ Every placeholder token of the form `{{DATA_DIR}}`, `{{EPSILON_DAU}}`, etc. must
 | {{N_USERS}} | README.md (Evaluation), eval/simulate.py | Synthetic workload total users. | int | ≥1. Example: `10000` | 10000 |
 | {{P_ACTIVE}} | README.md (Evaluation), eval/simulate.py | Daily activity probability. | float | 0 ≤ p ≤ 1. Example: `0.2` | 0.2 |
 | {{DELETE_RATE}} | README.md (Evaluation), eval/simulate.py | Per-event delete probability. | float | 0 ≤ p ≤ 1. Example: `0.05` | 0.05 |
+| {{DAYS}} | README.md (CLI examples), progress.txt | Number of days supplied to CLI examples. | int | ≥1. Example: `7` | REQUIRED |
 | {{TIMEZONE}} | README.md (Event JSON), src/dp_core/config.py | Canonical timezone for day boundaries. | string | IANA TZ name. Example: `UTC` | UTC |
+| {{SERVICE_HOST}} | README.md (Quickstart), cli/dpdau.py | Base URL for the FastAPI service when using the CLI remotely. | string | `http://host:port`. Example: `http://127.0.0.1:8000` | http://127.0.0.1:8000 |
 | {{SERVICE_DATABASE_URL}} | HANDOFF.md (Postgres Migration), src/dp_core/config.py | Database connection string when migrating off SQLite. | string | DSN format. Example: `postgresql://user:pass@host/db` | REQUIRED |
 | {{KAFKA_TOPIC}} | HANDOFF.md (Postgres & Kafka), src/dp_core/config.py | Upstream Kafka topic for streaming ingest. | string | Kafka topic name. Example: `dp-dau-events` | REQUIRED |
 | {{COVERAGE_THRESHOLD}} | README.md (Testing), Makefile | Minimum coverage percentage enforced in CI. | float | 0 < threshold ≤ 100. Example: `70` | 70 |
+| {{TOKEN}} | grade.md (docs checklist) | Placeholder for generic API token references in review checklist. | string | Substitute with actual API token. Example: `abcd1234` | REQUIRED |
+| {{PAPER_DATE}} | paper/paper.tex | Draft date for the academic paper. | string | Date format. Example: `December 2025` | December 2025 |
+| {{PLACEHOLDER}} | paper/paper.tex (Appendix) | Generic placeholder reference in appendix documentation. | string | Example token. Example: `value` | REQUIRED |

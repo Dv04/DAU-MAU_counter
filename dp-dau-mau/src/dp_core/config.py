@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 from pathlib import Path
+from typing import cast
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -23,7 +24,9 @@ def _resolve_numeric(value: object, placeholder: str, default: float) -> float:
         return default
     if isinstance(value, str) and PLACEHOLDER_PATTERN.fullmatch(value.strip()):
         return default
-    return float(value)
+    if isinstance(value, (int, float, str)):
+        return float(value)
+    raise TypeError(f"{placeholder} must resolve to a numeric value")
 
 
 def _resolve_int(value: object, placeholder: str, default: int) -> int:
@@ -31,7 +34,9 @@ def _resolve_int(value: object, placeholder: str, default: int) -> int:
         return default
     if isinstance(value, str) and PLACEHOLDER_PATTERN.fullmatch(value.strip()):
         return default
-    return int(value)
+    if isinstance(value, (int, str)):
+        return int(value)
+    raise TypeError(f"{placeholder} must resolve to an integer value")
 
 
 def _resolve_bool(value: object, placeholder: str, default: bool) -> bool:
@@ -49,7 +54,7 @@ def _resolve_bool(value: object, placeholder: str, default: bool) -> bool:
         raise ValueError(f"{placeholder} must be a boolean string (true/false)")
     if isinstance(value, bool):
         return value
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return bool(value)
     raise ValueError(f"{placeholder} must resolve to a boolean value")
 
@@ -76,17 +81,17 @@ def _resolve_float_sequence(
                     f"{placeholder} must be a JSON array or comma-separated list of numbers"
                 ) from convert_exc
         else:
-            if isinstance(parsed, (list, tuple)):
+            if isinstance(parsed, list | tuple):
                 try:
-                    return tuple(float(item) for item in parsed)
+                    return tuple(float(cast(float | int | str, item)) for item in parsed)
                 except ValueError as convert_exc:
                     raise ValueError(f"{placeholder} must contain numeric values") from convert_exc
             raise ValueError(
                 f"{placeholder} must be a JSON array or comma-separated list of numbers"
             )
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, list | tuple | set):
         try:
-            return tuple(float(item) for item in value)
+            return tuple(float(cast(float | int | str, item)) for item in value)
         except ValueError as exc:  # pragma: no cover - defensive branch
             raise ValueError(f"{placeholder} must contain numeric values") from exc
     raise TypeError(f"{placeholder} must be iterable of numeric values or a string")
@@ -177,8 +182,8 @@ class SketchSettings(BaseModel):
     @field_validator("impl", mode="before")
     def _v_impl(cls, v: object) -> str:
         value = _resolve_string(v, "{{SKETCH_IMPL}}", "kmv")
-        if value not in {"set", "theta", "kmv"}:
-            raise ValueError("{{SKETCH_IMPL}} must be one of 'kmv', 'set', 'theta'")
+        if value not in {"set", "theta", "kmv", "hllpp"}:
+            raise ValueError("{{SKETCH_IMPL}} must be one of 'kmv', 'set', 'theta', 'hllpp'")
         return value
 
     @field_validator("mau_window_days", mode="before")

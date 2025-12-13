@@ -1,0 +1,4 @@
+# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/dp_core/sketches/kmv_impl.py
+# hypothesis_version: 6.140.3
+
+[b'dpdau-kmv', b'kmv-bloom', 0.0, 1e-06, 1.0, '!II', 'Q', '_set', 'big', 'contains']

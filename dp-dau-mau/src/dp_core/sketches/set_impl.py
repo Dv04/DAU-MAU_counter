@@ -23,7 +23,7 @@ class SetSketch(DistinctSketch):
             raise TypeError("SetSketch union requires another SetSketch.")
         self._keys.update(other._keys)
 
-    def a_not_b(self, other: DistinctSketch) -> "SetSketch":
+    def a_not_b(self, other: DistinctSketch) -> SetSketch:
         if not isinstance(other, SetSketch):
             raise TypeError("SetSketch a_not_b requires another SetSketch.")
         return SetSketch(self._config, self._keys.difference(other._keys))
@@ -31,7 +31,7 @@ class SetSketch(DistinctSketch):
     def estimate(self) -> float:
         return float(len(self._keys))
 
-    def copy(self) -> "SetSketch":
+    def copy(self) -> SetSketch:
         return SetSketch(self._config, self._keys)
 
     def compact(self) -> None:
@@ -42,7 +42,7 @@ class SetSketch(DistinctSketch):
         return pickle.dumps(tuple(self._keys))
 
     @classmethod
-    def deserialize(cls, payload: bytes, config: SketchConfig) -> "SetSketch":
+    def deserialize(cls, payload: bytes, config: SketchConfig) -> SetSketch:
         keys = pickle.loads(payload)
         return cls(config, keys)
 

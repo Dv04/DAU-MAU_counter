@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import math
+import os
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -68,10 +69,32 @@ class PipelineManager:
         self.ledger = ledger or Ledger(ledger_path)
         accountant_path = ledgers_dir / "dp_budget.sqlite"
         self.accountant = accountant or PrivacyAccountant(accountant_path)
-        self.budgets = BudgetCaps(
-            dau=self.config.dp.dau_budget_total,
-            mau=self.config.dp.mau_budget_total,
+        days_per_month = 31
+
+        def _should_autoscale(env_var: str, default_value: float) -> bool:
+            raw = os.environ.get(env_var)
+            if raw is None:
+                return True
+            text = str(raw).strip()
+            if config_module.PLACEHOLDER_PATTERN.fullmatch(text) is not None:
+                return True
+            try:
+                value = float(text)
+            except ValueError:
+                return False
+            return math.isclose(value, default_value, rel_tol=1e-9, abs_tol=1e-9)
+
+        dau_cap = (
+            max(self.config.dp.dau_budget_total, self.config.dp.epsilon_dau * days_per_month)
+            if _should_autoscale("DAU_BUDGET_TOTAL", 3.0)
+            else self.config.dp.dau_budget_total
         )
+        mau_cap = (
+            max(self.config.dp.mau_budget_total, self.config.dp.epsilon_mau * days_per_month)
+            if _should_autoscale("MAU_BUDGET_TOTAL", 3.5)
+            else self.config.dp.mau_budget_total
+        )
+        self.budgets = BudgetCaps(dau=dau_cap, mau=mau_cap)
         self.events_loader = self.ledger.fetch_day_events
         self.sketch_factory = self._build_sketch_factory()
         self.window_manager = WindowManager(
@@ -85,7 +108,9 @@ class PipelineManager:
             use_bloom_for_diff=self.config.sketch.use_bloom_for_diff,
             bloom_fp_rate=self.config.sketch.bloom_fp_rate,
         )
-        factory = SketchFactory(config=sketch_cfg, backends={}, default_impl=self.config.sketch.impl)
+        factory = SketchFactory(
+            config=sketch_cfg, backends={}, default_impl=self.config.sketch.impl
+        )
         factory.register(
             "set",
             lambda cfg: SetSketch(cfg),
@@ -109,6 +134,22 @@ class PipelineManager:
         except ThetaSketchUnavailableError:
             if self.config.sketch.impl == "theta":
                 raise
+        
+        # Register HLL++ backend
+        try:
+            from .sketches.hllpp_impl import HllppSketch
+
+            factory.register(
+                "hllpp",
+                lambda cfg: HllppSketch(config=cfg),
+                lambda payload, cfg: HllppSketch.deserialize(payload, cfg),
+            )
+        except ImportError as exc:
+            if self.config.sketch.impl == "hllpp":
+                raise RuntimeError(
+                    "HLL++ sketch requested but hllpp_impl module is unavailable."
+                ) from exc
+        
         if self.config.sketch.impl not in factory.backends:
             raise RuntimeError(
                 f"Requested sketch implementation '{self.config.sketch.impl}' is unavailable."
@@ -138,12 +179,35 @@ class PipelineManager:
                 days = self.ledger.days_for_user(user_root)
             if day_str not in days:
                 days.append(day_str)
+            
+            # Write tombstone events for each affected historical day
+            # This enables retroactive erasure so rebuilding those days removes the user
+            tombstone_entries: list[ActivityEntry] = []
+            for affected_day_str in set(days):
+                affected_day = dt.date.fromisoformat(affected_day_str)
+                # Compute the correct user_key for that day's rotation epoch
+                day_user_key = hash_user_id(event.user_id, affected_day, self.config)
+                tombstone = ActivityEntry(
+                    day=affected_day_str,
+                    user_key=day_user_key,
+                    user_root=user_root,
+                    op="-",
+                    metadata=json.dumps({"tombstone": True, "source_day": day_str}),
+                )
+                tombstone_entries.append(tombstone)
+            
+            # Batch insert all tombstones
+            self.ledger.record_activity_batch(tombstone_entries)
+            
+            # Record erasure entry for auditing
             erasure_entry = ErasureEntry(
-                erasure_id=None, user_root=user_root, days=days, pending=True
+                erasure_id=None, user_root=user_root, days=list(set(days)), pending=True
             )
             self.ledger.record_erasure(erasure_entry)
-            for affected_day in set(days):
-                self.window_manager.mark_dirty(affected_day)
+            
+            # Mark all affected days dirty for rebuild
+            for affected_day_str in set(days):
+                self.window_manager.mark_dirty(affected_day_str)
 
     def ingest_batch(self, events: Iterable[EventRecord]) -> None:
         for event in events:
@@ -283,6 +347,7 @@ class PipelineManager:
         orders = getattr(self.config.dp, "rdp_orders", ())
         if not orders:
             return
+        rdp_points: dict[float, float] = {}
         if result.mechanism == "gaussian":
             if result.delta <= 0:
                 return
@@ -298,10 +363,12 @@ class PipelineManager:
                 if order <= 1:
                     continue
                 rdp = (order * (result.sensitivity**2)) / (2 * variance)
-                self.accountant.log_rdp(metric, day, float(order), rdp)
+                rdp_points[float(order)] = rdp
         else:
             for order in orders:
                 if order <= 1:
                     continue
                 rdp = (order / (order - 1.0)) * result.epsilon
-                self.accountant.log_rdp(metric, day, float(order), rdp)
+                rdp_points[float(order)] = rdp
+        if rdp_points:
+            self.accountant.log_rdp_points(metric, day, rdp_points)

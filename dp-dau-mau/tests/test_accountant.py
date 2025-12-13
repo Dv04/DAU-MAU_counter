@@ -26,6 +26,7 @@ def test_budget_snapshot_reports_rdp(tmp_path: Path) -> None:
         "mau", day, cap=1.0, delta=1e-6, orders=[2.0, 4.0], advanced_delta=1e-7
     )
     assert snapshot.metric == "mau"
+    assert snapshot.day == "2025-10-10"
     assert snapshot.period == "2025-10"
     assert snapshot.rdp_curve[2.0] == 0.25
     best_eps = snapshot.best_rdp_epsilon
@@ -34,7 +35,9 @@ def test_budget_snapshot_reports_rdp(tmp_path: Path) -> None:
     assert snapshot.advanced_delta is not None and snapshot.advanced_delta > 0.0
     assert snapshot.release_count == 1
     assert snapshot.rdp_orders == (2.0, 4.0)
-    assert snapshot.as_dict()["policy"]["delta"] == pytest.approx(1e-6)
+    policy = snapshot.as_dict()["policy"]
+    assert policy["composition"] == "rdp"
+    assert "notes" in policy
 
 
 def test_accountant_spent_epsilon_and_count(tmp_path: Path) -> None:
