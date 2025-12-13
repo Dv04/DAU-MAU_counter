@@ -121,38 +121,12 @@ class PipelineManager:
             lambda cfg: KMVSketch(cfg),
             lambda payload, cfg: KMVSketch.deserialize(payload, cfg),
         )
-        try:
-            from .sketches.theta_impl import ThetaSketch, ThetaSketchUnavailableError
-
-            factory.register(
-                "theta",
-                lambda cfg: ThetaSketch(cfg),
-                lambda payload, cfg: ThetaSketch.deserialize(payload, cfg),
-            )
-            if self.config.sketch.impl == "theta":  # fail fast if backend missing
-                ThetaSketch(sketch_cfg).compact()
-        except ThetaSketchUnavailableError:
-            if self.config.sketch.impl == "theta":
-                raise
-        
-        # Register HLL++ backend
-        try:
-            from .sketches.hllpp_impl import HllppSketch
-
-            factory.register(
-                "hllpp",
-                lambda cfg: HllppSketch(config=cfg),
-                lambda payload, cfg: HllppSketch.deserialize(payload, cfg),
-            )
-        except ImportError as exc:
-            if self.config.sketch.impl == "hllpp":
-                raise RuntimeError(
-                    "HLL++ sketch requested but hllpp_impl module is unavailable."
-                ) from exc
-        
+        # Note: theta and hllpp backends were removed to simplify codebase
+        # Only 'set' and 'kmv' are supported
         if self.config.sketch.impl not in factory.backends:
             raise RuntimeError(
-                f"Requested sketch implementation '{self.config.sketch.impl}' is unavailable."
+                f"Requested sketch implementation '{self.config.sketch.impl}' is unavailable. "
+                f"Available: {list(factory.backends.keys())}"
             )
         return factory
 

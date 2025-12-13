@@ -182,8 +182,8 @@ class SketchSettings(BaseModel):
     @field_validator("impl", mode="before")
     def _v_impl(cls, v: object) -> str:
         value = _resolve_string(v, "{{SKETCH_IMPL}}", "kmv")
-        if value not in {"set", "theta", "kmv", "hllpp"}:
-            raise ValueError("{{SKETCH_IMPL}} must be one of 'kmv', 'set', 'theta', 'hllpp'")
+        if value not in {"set", "kmv"}:
+            raise ValueError("{{SKETCH_IMPL}} must be one of 'set', 'kmv'")
         return value
 
     @field_validator("mau_window_days", mode="before")

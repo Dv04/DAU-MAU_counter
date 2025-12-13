@@ -12,7 +12,6 @@ from starlette.requests import Request
 from dp_core.config import AppConfig
 from dp_core.pipeline import PipelineManager
 
-from . import openapi_overrides
 from .metrics import MetricsMiddleware
 from .rate_limit import RateLimitConfig, RateLimiter, RateLimitMiddleware
 from .routes import router
@@ -86,7 +85,6 @@ def create_app() -> FastAPI:
             headers=exc.headers,
         )
 
-    openapi_overrides.apply(app)
     app.include_router(router)
     return app
 
