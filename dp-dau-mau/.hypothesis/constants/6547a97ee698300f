@@ -1,4 +1,0 @@
-# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/dp_core/ledger.py
-# hypothesis_version: 6.140.3
-
-['day', 'days', 'id', 'op', 'pending', 'user_key', 'user_root']

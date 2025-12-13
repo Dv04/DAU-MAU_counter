@@ -1,4 +1,0 @@
-# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/service/openapi_overrides.py
-# hypothesis_version: 6.140.3
-
-['/budget/{metric}', '/dau/{day}', '/event', '/mau', 'ApiKeyAuth', 'GET', 'POST', 'X-API-Key', 'apiKey', 'components', 'description', 'header', 'in', 'ingest', 'metrics', 'name', 'paths', 'security', 'securitySchemes', 'type']

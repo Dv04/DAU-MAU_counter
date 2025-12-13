@@ -1,4 +1,0 @@
-# file: /Users/apple/DAU-MAU_counter/dp-dau-mau/src/service/rate_limit.py
-# hypothesis_version: 6.148.2
-
-[60.0, 100, 429, 600, '/event', 'X-API-Key', 'X-Forwarded-For', 'X-RateLimit-Limit', 'X-RateLimit-Reset', 'application/json', 'unknown']
