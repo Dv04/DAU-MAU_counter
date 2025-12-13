@@ -73,3 +73,9 @@ ignore_errors = true
 [tool.coverage.run]
 source = ["src"]
 branch = true
+
+[tool.pytest.ini_options]
+addopts = "-p no:unraisableexception"
+filterwarnings = [
+    "ignore::ResourceWarning",
+]

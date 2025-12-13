@@ -299,7 +299,9 @@ class PipelineManager:
         end_day_str = end_day.isoformat()
         value, _union = self.window_manager.get_mau(end_day_str, window, self.events_loader)
         base_value = float(value)
-        sensitivity = float(self.config.dp.w_bound)
+        # Sensitivity = 1 for user-level DP (each user contributes at most 1 to count)
+        # W_BOUND is reserved for flippancy-aware continual observation (not implemented)
+        sensitivity = float(min(self.config.dp.w_bound, 1))
         dp_result = self._release("mau", end_day, base_value, sensitivity)
         budget = self.accountant.budget_snapshot(
             "mau",
