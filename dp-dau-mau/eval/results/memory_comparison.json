@@ -1,0 +1,56 @@
+[
+  {
+    "backend": "set",
+    "active_per_day": 2000,
+    "days": 30,
+    "total_users_across_days": 60000,
+    "total_serialized_bytes": 2100720,
+    "bytes_per_user": 35.012,
+    "process_peak_rss_mb": 51.90625
+  },
+  {
+    "backend": "roaring",
+    "active_per_day": 2000,
+    "days": 30,
+    "total_users_across_days": 60000,
+    "total_serialized_bytes": 1320240,
+    "bytes_per_user": 22.004,
+    "process_peak_rss_mb": 50.40625
+  },
+  {
+    "backend": "set",
+    "active_per_day": 20000,
+    "days": 30,
+    "total_users_across_days": 600000,
+    "total_serialized_bytes": 21002870,
+    "bytes_per_user": 35.004783333333336,
+    "process_peak_rss_mb": 152.203125
+  },
+  {
+    "backend": "roaring",
+    "active_per_day": 20000,
+    "days": 30,
+    "total_users_across_days": 600000,
+    "total_serialized_bytes": 13200004,
+    "bytes_per_user": 22.000006666666668,
+    "process_peak_rss_mb": 116.578125
+  },
+  {
+    "backend": "set",
+    "active_per_day": 200000,
+    "days": 30,
+    "total_users_across_days": 6000000,
+    "total_serialized_bytes": 210006705,
+    "bytes_per_user": 35.0011175,
+    "process_peak_rss_mb": 784.921875
+  },
+  {
+    "backend": "roaring",
+    "active_per_day": 200000,
+    "days": 30,
+    "total_users_across_days": 6000000,
+    "total_serialized_bytes": 131984406,
+    "bytes_per_user": 21.997401,
+    "process_peak_rss_mb": 526.546875
+  }
+]

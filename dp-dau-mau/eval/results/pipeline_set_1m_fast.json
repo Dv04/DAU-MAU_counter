@@ -1,0 +1,15 @@
+[
+  {
+    "sketch": "set",
+    "users": 1000000,
+    "num_events": 6000000,
+    "ingest_time_sec": 55.157626152038574,
+    "events_per_sec": 108779.15564134998,
+    "dau_latency_p50_ms": 0.3348959144204855,
+    "dau_latency_p99_ms": 0.5830659274943173,
+    "mau_latency_p50_ms": 778.4451454645023,
+    "mau_latency_p99_ms": 1396.1277076113038,
+    "peak_rss_after_ingest_mb": 2081.75,
+    "peak_rss_final_mb": 2081.75
+  }
+]
