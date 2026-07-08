@@ -27,7 +27,10 @@ def _patch_httpx(monkeypatch, app) -> None:
 def test_cli_generate_ingest_and_query(tmp_path: Path, monkeypatch) -> None:
     app = create_app()
     _patch_httpx(monkeypatch, app)
-    runner = CliRunner()
+    # mix_stderr=False: the CLI intentionally writes its human-readable
+    # "[DAU]/[MAU] ..." status line to stderr and the machine-readable JSON
+    # payload to stdout; result.stdout below must contain only the JSON.
+    runner = CliRunner(mix_stderr=False)
 
     data_dir = Path(os.environ["DATA_DIR"])
     dataset = data_dir / "streams" / "synthetic_cli.jsonl"

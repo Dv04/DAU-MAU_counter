@@ -19,6 +19,7 @@ from .ledger import ActivityEntry, ErasureEntry, Ledger
 from .privacy_accountant import BudgetCaps, PrivacyAccountant
 from .sketches.base import SketchConfig, SketchFactory
 from .sketches.kmv_impl import KMVSketch
+from .sketches.roaring_impl import RoaringSketch
 from .sketches.set_impl import SetSketch
 from .windows import WindowManager
 
@@ -121,8 +122,13 @@ class PipelineManager:
             lambda cfg: KMVSketch(cfg),
             lambda payload, cfg: KMVSketch.deserialize(payload, cfg),
         )
+        factory.register(
+            "roaring",
+            lambda cfg: RoaringSketch(cfg),
+            lambda payload, cfg: RoaringSketch.deserialize(payload, cfg),
+        )
         # Note: theta and hllpp backends were removed to simplify codebase
-        # Only 'set' and 'kmv' are supported
+        # 'set', 'kmv', and 'roaring' are supported
         if self.config.sketch.impl not in factory.backends:
             raise RuntimeError(
                 f"Requested sketch implementation '{self.config.sketch.impl}' is unavailable. "
