@@ -15,10 +15,12 @@ from typing import Any, Literal
 from . import config as config_module
 from .dp_mechanisms import MechanismResult, gaussian_mechanism, laplace_mechanism
 from .hashing import hash_user_id, hash_user_root
-from .ledger import ActivityEntry, ErasureEntry, Ledger
+from .storage.log import ActivityEntry, ErasureEntry
+from .storage.manager import PartitionedLogManager
 from .privacy_accountant import BudgetCaps, PrivacyAccountant
 from .sketches.base import SketchConfig, SketchFactory
 from .sketches.kmv_impl import KMVSketch
+from .sketches.roaring_impl import RoaringSketch
 from .sketches.set_impl import SetSketch
 from .windows import WindowManager
 
@@ -59,14 +61,17 @@ class PipelineManager:
     def __init__(
         self,
         config: config_module.AppConfig | None = None,
-        ledger: Ledger | None = None,
+        log_manager: PartitionedLogManager | None = None,
         accountant: PrivacyAccountant | None = None,
     ) -> None:
         self.config = config or config_module.AppConfig.from_env()
-        ledgers_dir = self.config.storage.data_dir / "ledgers"
+        data_dir = self.config.storage.data_dir
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.log_manager = log_manager or PartitionedLogManager(data_dir)
+        
+        ledgers_dir = data_dir / "ledgers"
         ledgers_dir.mkdir(parents=True, exist_ok=True)
-        ledger_path = ledgers_dir / "ledger.sqlite"
-        self.ledger = ledger or Ledger(ledger_path)
         accountant_path = ledgers_dir / "dp_budget.sqlite"
         self.accountant = accountant or PrivacyAccountant(accountant_path)
         days_per_month = 31
@@ -95,7 +100,7 @@ class PipelineManager:
             else self.config.dp.mau_budget_total
         )
         self.budgets = BudgetCaps(dau=dau_cap, mau=mau_cap)
-        self.events_loader = self.ledger.fetch_day_events
+        self.events_loader = self.log_manager.fetch_day_events
         self.sketch_factory = self._build_sketch_factory()
         self.window_manager = WindowManager(
             sketch_factory=self.sketch_factory,
@@ -117,12 +122,17 @@ class PipelineManager:
             lambda payload, cfg: SetSketch.deserialize(payload, cfg),
         )
         factory.register(
+            "roaring",
+            lambda cfg: RoaringSketch(cfg),
+            lambda payload, cfg: RoaringSketch.deserialize(payload, cfg),
+        )
+        factory.register(
             "kmv",
             lambda cfg: KMVSketch(cfg),
             lambda payload, cfg: KMVSketch.deserialize(payload, cfg),
         )
         # Note: theta and hllpp backends were removed to simplify codebase
-        # Only 'set' and 'kmv' are supported
+        # Only 'set', 'roaring', and 'kmv' are supported
         if self.config.sketch.impl not in factory.backends:
             raise RuntimeError(
                 f"Requested sketch implementation '{self.config.sketch.impl}' is unavailable. "
@@ -144,13 +154,14 @@ class PipelineManager:
             op=event.op,
             metadata=event.as_json(),
         )
-        self.ledger.record_activity(activity_entry)
-        self.window_manager.mark_dirty(day_str)
+        self.log_manager.append_activity(activity_entry)
+        # Eagerly update in-memory state
+        self.window_manager.update(day_str, event.op, user_key)
 
         if event.op == "-":
             days = event.metadata.get("days")
             if not days:
-                days = self.ledger.days_for_user(user_root)
+                days = self.log_manager.days_for_user(user_root)
             if day_str not in days:
                 days.append(day_str)
             
@@ -171,29 +182,149 @@ class PipelineManager:
                 tombstone_entries.append(tombstone)
             
             # Batch insert all tombstones
-            self.ledger.record_activity_batch(tombstone_entries)
+            for entry in tombstone_entries:
+                self.log_manager.append_activity(entry)
+                # Eagerly update affected days in memory
+                self.window_manager.update(entry.day, "-", entry.user_key)
             
             # Record erasure entry for auditing
             erasure_entry = ErasureEntry(
                 erasure_id=None, user_root=user_root, days=list(set(days)), pending=True
             )
-            self.ledger.record_erasure(erasure_entry)
-            
-            # Mark all affected days dirty for rebuild
-            for affected_day_str in set(days):
-                self.window_manager.mark_dirty(affected_day_str)
+            self.log_manager.append_erasure(erasure_entry)
+            # No need to mark dirty if we updated eagerly. 
+            # But if older listeners rely on dirty, we might leave it?
+            # No, let's trust eager updates.
 
     def ingest_batch(self, events: Iterable[EventRecord]) -> None:
-        for event in events:
-            self.ingest_event(event)
+        """
+        Optimized ingestion loop for high throughput.
+        Improvements:
+        1. Buffered Log Writes (Batch Syscalls)
+        2. Pre-calculated Salt (Avoid Hashing Setup)
+        3. Inline Struct Unpacking (Avoid Function Calls)
+        4. Array Buffering (Memory Efficiency)
+        """
+        import struct 
+        import array
+        import hmac
+        from hashlib import sha256
+
+        # Pre-calculate salts for likely days (memoization)
+        # Assuming most events in batch are roughly contiguous or same day
+        salt_cache: dict[str, bytes] = {}
+        secret_bytes = self.config.security.hash_salt_secret.encode("utf-8") 
+        if self.config.security.hash_salt_secret.startswith("b64:"):
+             import base64
+             secret_bytes = base64.b64decode(self.config.security.hash_salt_secret[4:])
+
+        root_ctx = hmac.new(secret_bytes, digestmod=sha256)
+        
+        # State buffers
+        adds: dict[str, array.array] = {}
+        removes: dict[str, array.array] = {}
+
+        # Buffered Logger
+        with self.log_manager.buffered_writer() as log_writer:
+            
+            for event in events:
+                day_str = event.day.isoformat()
+                
+                # 1. High-Performance Hashing
+                # Compute User Root (reused for - op)
+                # Optimization: reuse HMAC object? Standard lib doesn't easy copy.
+                # Just doing hmac.new is fast enough if secret is pre-bytes.
+                
+                # Compute User Key (Salted)
+                if day_str not in salt_cache:
+                    # Salt derivation logic inlined/memoized
+                    rotation_days = self.config.security.hash_salt_rotation_days
+                    rotation_epoch = event.day.toordinal() // max(rotation_days, 1)
+                    salt_msg = f"epoch::{rotation_epoch}".encode()
+                    salt_cache[day_str] = hmac.new(secret_bytes, salt_msg, sha256).digest()
+                
+                day_salt = salt_cache[day_str]
+                # hmac.new(key, msg, digest) is most efficient form
+                user_key = hmac.new(day_salt, event.user_id.encode("utf-8"), sha256).digest()
+                
+                # 2. Log Activity (Buffered)
+                user_root = b"" # Optimization: Only calculate root if needed (lazy)
+                
+                # We need `user_root` for ActivityEntry even if op is '+', 
+                # because the log spec expects it.
+                # Or can we optimize? The spec says 32s. 
+                # Let's compute it.
+                user_root = hmac.new(secret_bytes, event.user_id.encode("utf-8"), sha256).digest()
+
+                activity = ActivityEntry(
+                    day=day_str,
+                    user_key=user_key,
+                    user_root=user_root,
+                    op=event.op,
+                    metadata=event.as_json(),
+                )
+                log_writer.append_activity(activity)
+                
+                # 3. Buffer Update (Array)
+                val = struct.unpack("<I", user_key[:4])[0]
+                
+                if event.op == "+":
+                    if day_str not in adds: adds[day_str] = array.array('I')
+                    adds[day_str].append(val)
+                else:
+                    if day_str not in removes: removes[day_str] = array.array('I')
+                    removes[day_str].append(val)
+                    
+                    # Tombstones (Rare Path)
+                    days = event.metadata.get("days")
+                    if not days:
+                         # Slow path requires Manager lookup
+                        days = self.log_manager.days_for_user(user_root)
+                    if day_str not in days: days.append(day_str)
+                    
+                    for affected_day_str in set(days):
+                        if affected_day_str == day_str: continue 
+                        
+                        # Calculate salt for affected day
+                        if affected_day_str not in salt_cache:
+                             ad = dt.date.fromisoformat(affected_day_str)
+                             re = ad.toordinal() // max(rotation_days, 1)
+                             sm = f"epoch::{re}".encode()
+                             salt_cache[affected_day_str] = hmac.new(secret_bytes, sm, sha256).digest()
+                        
+                        ad_salt = salt_cache[affected_day_str]
+                        d_key = hmac.new(ad_salt, event.user_id.encode("utf-8"), sha256).digest()
+                        
+                        tombstone = ActivityEntry(
+                            day=affected_day_str,
+                            user_key=d_key,
+                            user_root=user_root,
+                            op="-",
+                            metadata=json.dumps({"tombstone": True, "source_day": day_str}),
+                        )
+                        log_writer.append_activity(tombstone)
+                        
+                        d_val = struct.unpack("<I", d_key[:4])[0]
+                        if affected_day_str not in removes: removes[affected_day_str] = array.array('I')
+                        removes[affected_day_str].append(d_val)
+                    
+                    erasure_entry = ErasureEntry(
+                        erasure_id=None, user_root=user_root, days=list(set(days)), pending=True
+                    )
+                    self.log_manager.append_erasure(erasure_entry)
+
+        # 4. Flush bulk updates
+        all_days = set(adds.keys()) | set(removes.keys())
+        for day in all_days:
+            self.window_manager.bulk_update(day, adds.get(day, []), removes.get(day, []))
 
     def replay_deletions(self) -> None:
-        pending = self.ledger.pending_erasures()
+        pending = self.log_manager.pending_erasures()
         for erasure in pending:
             for day in erasure.days:
                 self.window_manager.mark_dirty(day)
             if erasure.erasure_id is not None:
-                self.ledger.mark_erasure_processed(erasure.erasure_id)
+                self.log_manager.mark_erasure_processed(erasure.erasure_id)
 
     def _release(
         self,
@@ -274,8 +405,8 @@ class PipelineManager:
         value, _union = self.window_manager.get_mau(end_day_str, window, self.events_loader)
         base_value = float(value)
         # Sensitivity = 1 for user-level DP (each user contributes at most 1 to count)
-        # W_BOUND is reserved for flippancy-aware continual observation (not implemented)
-        sensitivity = float(min(self.config.dp.w_bound, 1))
+        # Hardcoded to 1.0 for safety; W_BOUND is reserved for future flippancy-aware mechanisms
+        sensitivity = 1.0
         dp_result = self._release("mau", end_day, base_value, sensitivity)
         budget = self.accountant.budget_snapshot(
             "mau",

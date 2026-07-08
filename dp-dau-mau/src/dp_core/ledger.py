@@ -28,10 +28,12 @@ class ErasureEntry:
 class Ledger:
     def __init__(self, db_path: Path) -> None:
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._conn = sqlite3.connect(db_path, check_same_thread=False, isolation_level=None)
         self._conn.execute("PRAGMA journal_mode=WAL;")
         self._conn.row_factory = sqlite3.Row
         self._ensure_tables()
+
+        self._in_transaction = False
 
     def _ensure_tables(self) -> None:
         self._conn.executescript(
@@ -66,18 +68,27 @@ class Ledger:
             """,
             (entry.day, entry.user_key, entry.user_root, entry.op, entry.metadata),
         )
-        self._conn.commit()
+        if not self._in_transaction:
+            self._conn.commit()
 
     def record_activity_batch(self, entries: list[ActivityEntry]) -> None:
         """Batch insert activity entries for efficiency (used for tombstones)."""
         if not entries:
             return
-        with self._conn:
+        # If already in transaction, just execute. If not, separate transaction.
+        if self._in_transaction:
             self._conn.executemany(
                 """INSERT INTO activity_log (day, user_key, user_root, op, metadata)
                    VALUES (?, ?, ?, ?, ?)""",
                 [(e.day, e.user_key, e.user_root, e.op, e.metadata) for e in entries],
             )
+        else:
+            with self._conn:
+                self._conn.executemany(
+                    """INSERT INTO activity_log (day, user_key, user_root, op, metadata)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    [(e.day, e.user_key, e.user_root, e.op, e.metadata) for e in entries],
+                )
 
     def record_erasure(self, entry: ErasureEntry) -> int:
         self._conn.execute(
@@ -87,7 +98,8 @@ class Ledger:
             """,
             (entry.user_root, json.dumps(entry.days), int(entry.pending)),
         )
-        self._conn.commit()
+        if not self._in_transaction:
+            self._conn.commit()
         cur = self._conn.execute("SELECT last_insert_rowid()")
         (erasure_id,) = cur.fetchone()
         return int(erasure_id)
@@ -97,7 +109,8 @@ class Ledger:
             "UPDATE erasure_log SET pending = 0, processed_at = CURRENT_TIMESTAMP WHERE id = ?",
             (erasure_id,),
         )
-        self._conn.commit()
+        if not self._in_transaction:
+            self._conn.commit()
 
     def fetch_day_events(self, day: str) -> list[tuple[str, bytes]]:
         cur = self._conn.execute(
@@ -136,3 +149,26 @@ class Ledger:
 
     def __exit__(self, *_exc_info: object) -> None:
         self.close()
+        
+    def transaction(self):
+        return self._TransactionContext(self)
+
+    class _TransactionContext:
+        def __init__(self, ledger: Ledger):
+            self.ledger = ledger
+            
+        def __enter__(self):
+            if not self.ledger._in_transaction:
+                self.ledger._conn.execute("BEGIN")
+                self.ledger._in_transaction = True
+                self.should_commit = True
+            else:
+                self.should_commit = False
+                
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if self.should_commit:
+                if exc_type:
+                    self.ledger._conn.rollback()
+                else:
+                    self.ledger._conn.commit()
+                self.ledger._in_transaction = False

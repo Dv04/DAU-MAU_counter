@@ -1,0 +1,23 @@
+[
+  {
+    "users": 10000,
+    "ingest_time_sec": 0.4163787364959717,
+    "peak_rss_mb": 56.1875,
+    "dau_latency_ms": 0.7710456848144531,
+    "mau_latency_ms": 7.399797439575195
+  },
+  {
+    "users": 100000,
+    "ingest_time_sec": 4.599575042724609,
+    "peak_rss_mb": 180.734375,
+    "dau_latency_ms": 0.9682178497314453,
+    "mau_latency_ms": 171.8740463256836
+  },
+  {
+    "users": 1000000,
+    "ingest_time_sec": 51.9017539024353,
+    "peak_rss_mb": 1149.109375,
+    "dau_latency_ms": 2.412080764770508,
+    "mau_latency_ms": 202.51703262329102
+  }
+]

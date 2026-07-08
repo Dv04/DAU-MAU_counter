@@ -235,7 +235,7 @@ class StorageSettings(BaseModel):
 
 class SecuritySettings(BaseModel):
     hash_salt_secret: str = Field(default="{{HASH_SALT_SECRET}}")
-    hash_salt_rotation_days: int = Field(default=30)
+    hash_salt_rotation_days: int = Field(default=365)
     api_key: str | None = Field(default="{{SERVICE_API_KEY}}")
     admin_email: str | None = Field(default="{{ADMIN_EMAIL}}")
     timezone: str = Field(default="{{TIMEZONE}}")
@@ -246,7 +246,7 @@ class SecuritySettings(BaseModel):
 
     @field_validator("hash_salt_rotation_days", mode="before")
     def _v_rotation(cls, v: object) -> int:
-        return _resolve_int(v, "{{HASH_SALT_ROTATION_DAYS}}", 30)
+        return _resolve_int(v, "{{HASH_SALT_ROTATION_DAYS}}", 365)
 
     @field_validator("api_key", mode="before")
     def _v_api_key(cls, v: object) -> str | None:

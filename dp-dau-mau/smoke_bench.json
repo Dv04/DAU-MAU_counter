@@ -1,0 +1,16 @@
+[
+  {
+    "users": 100,
+    "ingest_time_sec": 0.10653829574584961,
+    "peak_rss_mb": 38.765625,
+    "dau_latency_ms": 701.024055480957,
+    "mau_latency_ms": 14934.641122817993
+  },
+  {
+    "users": 500,
+    "ingest_time_sec": 0.1933591365814209,
+    "peak_rss_mb": 41.375,
+    "dau_latency_ms": 603.431224822998,
+    "mau_latency_ms": 13501.06692314148
+  }
+]

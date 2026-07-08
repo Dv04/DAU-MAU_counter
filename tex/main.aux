@@ -2,43 +2,91 @@
 \providecommand\hyper@newdestlabel[2]{}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
-\@writefile{toc}{\contentsline {section}{\numberline {1}Problem Description}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Problem Description}{2}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Concrete Example.}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Real-World Stakes.}{2}{section*.2}\protected@file@percent }
 \citation{flajolet1985probabilistic}
 \citation{flajolet2007hyperloglog}
 \citation{datasketches2024theta}
 \citation{dwork2010differential}
 \citation{jain2023counting}
 \citation{cummings2025differentially}
-\citation{wallstreetprep2024}
-\citation{investopedia2025}
-\citation{mixpanel2024}
-\citation{podda2021shedding}
 \citation{datacalculus2023}
-\citation{apple2017differential}
-\@writefile{toc}{\contentsline {section}{\numberline {2}Literature Survey}{2}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Streaming distinct counting}{2}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Differential privacy for continual release}{2}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Gaps in current systems and our positioning}{2}{subsection.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Hypothesis}{3}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Settings}{3}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Datasets and Workloads}{3}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Algorithms and Baselines}{3}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Literature Survey}{3}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Streaming Distinct Counting}{3}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Differential Privacy for Continual Release}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Deletion Handling in Production Systems}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Our Positioning}{4}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Hypothesis}{5}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Use Case 1: Streaming Distinct Counting with Deletions.}{5}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Use Case 2: Differential Privacy under Continual Observation.}{5}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Use Case 3: Combining DP with Deletion-Friendly Sketches.}{5}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Settings}{6}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Datasets and Workloads}{6}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Algorithms and Baselines}{6}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}System Architecture and Algorithm}{6}{subsection.4.3}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces DP-DAU/MAU Pipeline with Deletion Support}}{7}{algorithm.1}\protected@file@percent }
+\newlabel{alg:pipeline}{{1}{7}{System Architecture and Algorithm}{algorithm.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Evaluation Metrics}{8}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Accuracy.}{8}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Performance.}{8}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Results}{9}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Accuracy Across Privacy Levels}{9}{subsection.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Accuracy: 500 users, 30 days, 10\% deletions, seed=42}}{9}{table.1}\protected@file@percent }
+\newlabel{tab:results500}{{1}{9}{Accuracy: 500 users, 30 days, 10\% deletions, seed=42}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Accuracy: 10,000 users, 30 days, 5\% deletions, seed=42}}{9}{table.2}\protected@file@percent }
+\newlabel{tab:results10k}{{2}{9}{Accuracy: 10,000 users, 30 days, 5\% deletions, seed=42}{table.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Key observations:}{9}{section*.8}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Relative error vs. privacy parameter $\varepsilon $ for DAU and MAU. Both metrics stay well below the 5\% threshold across all tested privacy levels, confirming our hypothesis.}}{10}{figure.1}\protected@file@percent }
+\newlabel{fig:error_vs_eps}{{1}{10}{Relative error vs. privacy parameter $\varepsilon $ for DAU and MAU. Both metrics stay well below the 5\% threshold across all tested privacy levels, confirming our hypothesis}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Baseline Comparison: Systems Without Deletion Support}{10}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Impact of ignoring GDPR deletions (10,000 users, 5\% deleted)}}{10}{table.3}\protected@file@percent }
+\newlabel{tab:baseline}{{3}{10}{Impact of ignoring GDPR deletions (10,000 users, 5\% deleted)}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Adversarial Workload: Toggle Storms}{10}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Privacy Budget Accounting}{11}{subsection.5.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Privacy budget consumption: naive composition (linear) vs. RDP composition (sublinear). RDP enables $\sim $27\% more releases within the same budget.}}{11}{figure.2}\protected@file@percent }
+\newlabel{fig:budget}{{2}{11}{Privacy budget consumption: naive composition (linear) vs. RDP composition (sublinear). RDP enables $\sim $27\% more releases within the same budget}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Performance Benchmarks}{11}{subsection.5.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Performance benchmarks}}{11}{table.4}\protected@file@percent }
+\newlabel{tab:perf}{{4}{11}{Performance benchmarks}{table.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{12}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Achieving the Hypothesis}{12}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Use Case 1 (Streaming Distinct Counting).}{12}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Use Case 2 (Differential Privacy).}{12}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Use Case 3 (DP + Deletions).}{12}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Limitations and Future Work}{12}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Contributions Summary}{12}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {A}Privacy Parameters Configuration}{13}{appendix.1.A}\protected@file@percent }
+\newlabel{appendix:privacy}{{A}{13}{Privacy Parameters Configuration}{appendix.1.A}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Deletion Correctness Verification}{13}{appendix.1.B}\protected@file@percent }
+\newlabel{appendix:deletion}{{B}{13}{Deletion Correctness Verification}{appendix.1.B}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Critical Implementation Decisions}{13}{appendix.1.C}\protected@file@percent }
+\newlabel{appendix:decisions}{{C}{13}{Critical Implementation Decisions}{appendix.1.C}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Reproducibility}{14}{appendix.1.D}\protected@file@percent }
+\newlabel{appendix:repro}{{D}{14}{Reproducibility}{appendix.1.D}{}}
 \bibcite{flajolet1985probabilistic}{1}
 \bibcite{flajolet2007hyperloglog}{2}
-\bibcite{datasketches2024theta}{3}
-\bibcite{dwork2010differential}{4}
-\bibcite{jain2023counting}{5}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Differential Privacy Parameters}{4}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Evaluation Metrics}{4}{subsection.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Accuracy:}{4}{section*.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Correctness under deletions:}{4}{section*.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Performance:}{4}{section*.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Implementation Notes}{4}{subsection.4.5}\protected@file@percent }
-\bibcite{cummings2025differentially}{6}
-\bibcite{podda2021shedding}{7}
-\bibcite{datacalculus2023}{8}
-\bibcite{wallstreetprep2024}{9}
-\bibcite{investopedia2025}{10}
-\bibcite{mixpanel2024}{11}
-\bibcite{apple2017differential}{12}
-\gdef \@abspage@last{5}
+\bibcite{bar2002kmv}{3}
+\bibcite{heule2013hllpp}{4}
+\bibcite{datasketches2024theta}{5}
+\bibcite{dwork2006calibrating}{6}
+\bibcite{dwork2010differential}{7}
+\bibcite{dwork2014algorithmic}{8}
+\bibcite{mironov2017rdp}{9}
+\bibcite{abadi2016deep}{10}
+\bibcite{bun2016concentrated}{11}
+\bibcite{jain2023counting}{12}
+\bibcite{cummings2025differentially}{13}
+\bibcite{smith2020flajolet}{14}
+\bibcite{apple2017differential}{15}
+\bibcite{erlingsson2014rappor}{16}
+\bibcite{ding2017collecting}{17}
+\bibcite{gdpr2016}{18}
+\bibcite{podda2021shedding}{19}
+\bibcite{datacalculus2023}{20}
+\bibcite{wallstreetprep2024}{21}
+\bibcite{investopedia2025}{22}
+\bibcite{mixpanel2024}{23}
+\bibcite{druid2014}{24}
+\bibcite{melnik2020dremel}{25}
+\gdef \@abspage@last{16}

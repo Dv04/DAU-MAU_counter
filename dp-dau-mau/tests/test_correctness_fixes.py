@@ -21,7 +21,7 @@ def temp_data_dir(monkeypatch: pytest.MonkeyPatch) -> str:
     with tempfile.TemporaryDirectory() as tmpdir:
         monkeypatch.setenv("DATA_DIR", tmpdir)
         monkeypatch.setenv("SKETCH_IMPL", "set")  # Use exact counting
-        monkeypatch.setenv("HASH_SALT_ROTATION_DAYS", "30")
+        monkeypatch.setenv("HASH_SALT_ROTATION_DAYS", "365")
         monkeypatch.setenv("MAU_WINDOW_DAYS", "30")
         monkeypatch.setenv("DAU_BUDGET_TOTAL", "100.0")  # Large budget for testing
         monkeypatch.setenv("MAU_BUDGET_TOTAL", "100.0")

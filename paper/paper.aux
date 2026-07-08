@@ -1,64 +1,223 @@
 \relax 
-\catcode 95\active
 \providecommand\hyper@newdestlabel[2]{}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
 \citation{GDPR}
-\citation{Dwork2006}
+\citation{CCPA}
+\citation{Bourtoule2021,Cao2015,Ginart2019}
 \citation{Flippancy2023}
-\citation{Flajolet2007,DataSketches,DataSketchesANotB}
-\citation{Dwork2006,Rogers2020}
+\@writefile{toc}{\contentsline {section}{Abstract}{1}{section*.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Contributions.}{1}{section*.4}\protected@file@percent }
+\citation{Dwork2006,Dwork2014}
 \citation{Dwork2006}
-\citation{Rogers2020}
-\citation{NIST800226}
+\citation{Dwork2014,Dong2022}
+\citation{GDPR}
+\citation{Kairouz2015}
+\citation{Mironov2017}
+\citation{Bar-Yossef2002,Cormode2005}
+\citation{Flajolet2007,Heule2013}
+\citation{Dasgupta2016}
+\citation{DataSketches}
 \citation{Flippancy2023}
-\citation{Flajolet2007}
-\citation{Dasgupta2016,DataSketches,DataSketchesANotB}
-\citation{Dickens2023}
-\citation{Rogers2020}
-\citation{VideoDP2020,Privid2022}
-\@writefile{toc}{\contentsline {paragraph}{Contributions.}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Positioning.}{2}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why Existing Approaches Fail.}{2}{section*.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {2}Background and Related Work}{2}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Differential Privacy and composition.}{2}{section*.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Turnstile distinct counting with deletions.}{2}{section*.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Distinct sketches.}{2}{section*.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Adjacent privacy systems.}{2}{section*.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Problem Formulation}{2}{section.3}\protected@file@percent }
-\citation{Dasgupta2016,DataSketchesANotB}
-\citation{Flajolet2007}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Differential Privacy}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Pseudonymization vs.\ Anonymization.}{2}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Composition and Rényi DP}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Distinct Counting Sketches}{2}{subsection.2.3}\protected@file@percent }
+\citation{Erlingsson2014}
+\citation{Apple2017}
+\citation{Bittau2017}
+\citation{Corrigan-Gibbs2017}
+\citation{Dwork2010}
+\citation{Chan2011}
+\citation{Erlingsson2014}
+\citation{Apple2017}
 \citation{Rogers2020}
-\@writefile{toc}{\contentsline {section}{\numberline {4}System Overview (Edge $\to $ Cloud)}{3}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Algorithms}{3}{section.5}\protected@file@percent }
-\newlabel{sec:algorithms}{{5}{3}{Algorithms}{section.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{Sketch layer.}{3}{section*.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{DP continual release.}{3}{section*.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Deletion replay.}{3}{section*.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Implementation}{4}{section.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {7}Evaluation (placeholders)}{4}{section.7}\protected@file@percent }
-\newlabel{sec:evaluation}{{7}{4}{Evaluation (placeholders)}{section.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{Setup.}{4}{section*.12}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Metrics.}{4}{section*.13}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Results (to be inserted).}{4}{section*.14}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {8}Case Study: CCTV Analytics (Brief)}{4}{section.8}\protected@file@percent }
-\citation{Flajolet2007,DataSketchesANotB}
-\citation{NIST800226}
-\bibcite{GDPR}{{1}{}{{}}{{}}}
+\citation{Apple2017}
+\citation{Erlingsson2014}
+\citation{VideoDP2020}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Turnstile Distinct Counting with DP}{3}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Production Privacy Systems}{3}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Gap Analysis.}{3}{section*.8}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparison with real-world privacy systems}}{3}{table.caption.9}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:related-work}{{1}{3}{Comparison with real-world privacy systems}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Problem Formulation and Threat Model}{3}{section.3}\protected@file@percent }
+\newlabel{sec:problem}{{3}{3}{Problem Formulation and Threat Model}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}System Model}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Threat Model}{3}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:threat-model}{{3.2}{3}{Threat Model}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Parties and trust.}{3}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Privacy goal.}{3}{section*.11}\protected@file@percent }
+\citation{Flippancy2023}
+\@writefile{toc}{\contentsline {paragraph}{The KMS contract.}{4}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What the gateway sees.}{4}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Erasure requests are control-plane data.}{4}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Summary of guarantees.}{4}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Connection to Flippancy Theory}{4}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Deletion Requirements}{4}{subsection.3.4}\protected@file@percent }
+\newlabel{def:erasure}{{4}{4}{Post-Erasure Release Semantics}{theorem.4}{}}
+\newlabel{def:history-indep}{{5}{4}{History-Independent Deletion}{theorem.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Reference architecture with Privacy Officer KMS. Edge devices pseudonymize with epoch salts (discarded after use). The \textbf  {Offline KMS} retains historical salts in an air-gapped enclave, enabling authorized retroactive deletions without exposing keys to the ingestion tier.}}{5}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{5}{Reference architecture with Privacy Officer KMS. Edge devices pseudonymize with epoch salts (discarded after use). The \textbf {Offline KMS} retains historical salts in an air-gapped enclave, enabling authorized retroactive deletions without exposing keys to the ingestion tier}{figure.caption.16}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}System Design}{5}{section.4}\protected@file@percent }
+\newlabel{sec:system-design}{{4}{5}{System Design}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Architecture Overview}{5}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Pseudonymization}{5}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:pseudonymization}{{4.2}{5}{Pseudonymization}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Cross-Epoch Handling.}{5}{section*.17}\protected@file@percent }
+\newlabel{prop:epoch-overlap}{{6}{5}{Cross-Epoch Window Correctness}{theorem.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Epoch timeline showing salt rotation and retroactive deletion (schematic; \emph  {not to scale}---each epoch spans 365 days while the query window spans 30). When a deletion request arrives, the KMS re-derives historical hashes using retained salt seeds ($s_1, s_2$) to generate tombstones for all affected days within the MAU window.}}{6}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:epoch-timeline}{{2}{6}{Epoch timeline showing salt rotation and retroactive deletion (schematic; \emph {not to scale}---each epoch spans 365 days while the query window spans 30). When a deletion request arrives, the KMS re-derives historical hashes using retained salt seeds ($s_1, s_2$) to generate tombstones for all affected days within the MAU window}{figure.caption.18}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}State Backend with Tombstones}{6}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:state-backend}{{4.3}{6}{State Backend with Tombstones}{subsection.4.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Deletion via Tombstones.}{6}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why tombstones are compatible with erasure.}{6}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Backend Selection}{6}{subsection.4.4}\protected@file@percent }
+\newlabel{sec:backend-selection}{{4.4}{6}{Backend Selection}{subsection.4.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Data minimization vs.\ exactness.}{6}{section*.21}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Comparison of Sketch Data Structures for Deletion-Compliant streams}}{6}{table.caption.22}\protected@file@percent }
+\newlabel{tab:sketches}{{2}{6}{Comparison of Sketch Data Structures for Deletion-Compliant streams}{table.caption.22}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}DP Release Mechanism}{6}{subsection.4.5}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces DP Release for DAU/MAU}}{7}{algorithm.1}\protected@file@percent }
+\newlabel{alg:dp-release}{{1}{7}{DP Release for DAU/MAU}{algorithm.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Noise Caching with Versioning.}{7}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Privacy Analysis}{7}{section.5}\protected@file@percent }
+\newlabel{sec:privacy-analysis}{{5}{7}{Privacy Analysis}{section.5}{}}
+\newlabel{thm:dau-privacy}{{7}{7}{Per-Release DAU Guarantee}{theorem.7}{}}
+\newlabel{thm:mau-privacy}{{8}{7}{Per-Release MAU Guarantee}{theorem.8}{}}
+\newlabel{lem:rdp}{{9}{7}{RDP Composition Benefit}{theorem.9}{}}
+\newlabel{thm:horizon}{{10}{7}{Deployment-Horizon Guarantee}{theorem.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Privacy Budget Optimization via RDP}{7}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Privacy Accountant Unit.}{7}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Implementation}{7}{section.6}\protected@file@percent }
+\newlabel{sec:implementation}{{6}{7}{Implementation}{section.6}{}}
+\citation{Roaring2016}
+\citation{Roaring2016}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}High-Performance Ingestion Engine}{8}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Vectorized State Management}{8}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Eager Update Model}{8}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tombstone Application}{8}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Backend Clarification}{8}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Log-Structured Storage}{8}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Service Architecture}{8}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Evaluation}{9}{section.7}\protected@file@percent }
+\newlabel{sec:evaluation}{{7}{9}{Evaluation}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Experimental Setup}{9}{subsection.7.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Evaluation workload parameters}}{9}{table.caption.28}\protected@file@percent }
+\newlabel{tab:workloads}{{3}{9}{Evaluation workload parameters}{table.caption.28}{}}
+\@writefile{toc}{\contentsline {paragraph}{Privacy Performance Tax.}{9}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Accuracy Results}{9}{subsection.7.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Accuracy metrics: relative error (\%) at various $\varepsilon $}}{9}{table.caption.30}\protected@file@percent }
+\newlabel{tab:accuracy}{{4}{9}{Accuracy metrics: relative error (\%) at various $\varepsilon $}{table.caption.30}{}}
+\@writefile{toc}{\contentsline {paragraph}{What drives accuracy.}{9}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Baseline Comparison}{9}{subsection.7.3}\protected@file@percent }
+\newlabel{sec:baseline-comparison}{{7.3}{9}{Baseline Comparison}{subsection.7.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Impact of deletion support (100,000 users, 5\% deleted)}}{9}{table.caption.32}\protected@file@percent }
+\newlabel{tab:baseline}{{5}{9}{Impact of deletion support (100,000 users, 5\% deleted)}{table.caption.32}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Adversarial Workload}{9}{subsection.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Privacy-Utility Tradeoff}{10}{subsection.7.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Relative error vs. privacy parameter $\varepsilon $. The plot shows a 0.5\% accuracy threshold; both DAU and MAU achieve this stringent target at $\varepsilon \geq 0.5$. For practical dashboard applications, a 5\% threshold is commonly acceptable.}}{10}{figure.caption.33}\protected@file@percent }
+\newlabel{fig:error-epsilon}{{3}{10}{Relative error vs. privacy parameter $\varepsilon $. The plot shows a 0.5\% accuracy threshold; both DAU and MAU achieve this stringent target at $\varepsilon \geq 0.5$. For practical dashboard applications, a 5\% threshold is commonly acceptable}{figure.caption.33}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}Budget Consumption}{10}{subsection.7.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Rényi Differential Privacy (RDP) vs. Naive Sequential Composition. RDP saves approximately 25\% of the privacy budget.}}{10}{figure.caption.34}\protected@file@percent }
+\newlabel{fig:budget}{{4}{10}{Rényi Differential Privacy (RDP) vs. Naive Sequential Composition. RDP saves approximately 25\% of the privacy budget}{figure.caption.34}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.7}Performance}{10}{subsection.7.7}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Performance at Scale (1M Users, Single Node)}}{10}{table.caption.35}\protected@file@percent }
+\newlabel{tab:performance}{{6}{10}{Performance at Scale (1M Users, Single Node)}{table.caption.35}{}}
+\@writefile{toc}{\contentsline {paragraph}{Scalability Verification.}{10}{section*.36}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Ingestion scalability. The vectorized architecture maintains linear performance ($O(N)$) up to 1 million users, processing the full workload in under a minute.}}{10}{figure.caption.37}\protected@file@percent }
+\newlabel{fig:scalability}{{5}{10}{Ingestion scalability. The vectorized architecture maintains linear performance ($O(N)$) up to 1 million users, processing the full workload in under a minute}{figure.caption.37}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Scalability Metrics Across User Populations}}{11}{table.caption.38}\protected@file@percent }
+\newlabel{tab:scalability}{{7}{11}{Scalability Metrics Across User Populations}{table.caption.38}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Query latency vs. user population. Both DAU and MAU queries remain well below the 1-second interactive threshold even at 1M users.}}{11}{figure.caption.39}\protected@file@percent }
+\newlabel{fig:latency}{{6}{11}{Query latency vs. user population. Both DAU and MAU queries remain well below the 1-second interactive threshold even at 1M users}{figure.caption.39}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Case Studies (Design Exercises)}{11}{section.8}\protected@file@percent }
+\newlabel{sec:case-studies}{{8}{11}{Case Studies (Design Exercises)}{section.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Primary Case Study: Product Telemetry}{11}{subsection.8.1}\protected@file@percent }
+\newlabel{sec:telemetry-case}{{8.1}{11}{Primary Case Study: Product Telemetry}{subsection.8.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Scenario.}{11}{section*.40}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Instantiation.}{11}{section*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why this is the grounded case.}{11}{section*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}Stress Variant: Physical-Space (CCTV) Footfall}{11}{subsection.8.2}\protected@file@percent }
+\newlabel{sec:cctv-case}{{8.2}{11}{Stress Variant: Physical-Space (CCTV) Footfall}{subsection.8.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Scenario.}{11}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Deployment architecture.}{11}{section*.44}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Privacy by Design.}{11}{section*.45}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Erasure flow.}{11}{section*.46}\protected@file@percent }
+\citation{Chan2011}
+\@writefile{toc}{\contentsline {paragraph}{Results.}{12}{section*.47}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Regulatory Compliance.}{12}{section*.48}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Design considerations surfaced by the exercise.}{12}{section*.49}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion}{12}{section.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Sketch Selection.}{12}{section*.50}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Budget Governance.}{12}{section*.51}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Scalability Considerations.}{12}{section*.52}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Comparison with Alternatives.}{12}{section*.53}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitations.}{12}{section*.54}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{12}{section.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Future Work}{12}{section.11}\protected@file@percent }
+\newlabel{sec:future-work}{{11}{12}{Future Work}{section.11}{}}
+\citation{Dwork2006}
+\citation{Mironov2017}
+\citation{Mironov2017}
+\citation{Mironov2017}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Privacy Proofs}{13}{appendix.A}\protected@file@percent }
+\newlabel{app:proofs}{{A}{13}{Privacy Proofs}{appendix.A}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Proof of Proposition\nonbreakingspace \ref {thm:dau-privacy}}{13}{subsection.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Proof of Proposition\nonbreakingspace \ref {thm:mau-privacy}}{13}{subsection.A.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Proof of Lemma\nonbreakingspace \ref {lem:rdp}}{13}{subsection.A.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}Proof of Theorem\nonbreakingspace \ref {thm:horizon}}{13}{subsection.A.4}\protected@file@percent }
+\bibcite{Flippancy2023}{{1}{}{{}}{{}}}
 \bibcite{Dwork2006}{{2}{}{{}}{{}}}
-\bibcite{Flippancy2023}{{3}{}{{}}{{}}}
-\bibcite{Rogers2020}{{4}{}{{}}{{}}}
-\bibcite{Flajolet2007}{{5}{}{{}}{{}}}
-\bibcite{Dasgupta2016}{{6}{}{{}}{{}}}
-\bibcite{DataSketches}{{7}{}{{}}{{}}}
-\bibcite{DataSketchesANotB}{{8}{}{{}}{{}}}
-\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion}{5}{section.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}Limitations and Threats to Validity}{5}{section.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {11}Ethics and Compliance}{5}{section.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {12}Conclusion}{5}{section.12}\protected@file@percent }
-\bibcite{Dickens2023}{{9}{}{{}}{{}}}
-\bibcite{VideoDP2020}{{10}{}{{}}{{}}}
-\bibcite{Privid2022}{{11}{}{{}}{{}}}
-\bibcite{NIST800226}{{12}{}{{}}{{}}}
+\bibcite{Dwork2014}{{3}{}{{}}{{}}}
+\bibcite{McSherry2007}{{4}{}{{}}{{}}}
+\bibcite{Nissim2007}{{5}{}{{}}{{}}}
+\bibcite{Mironov2017}{{6}{}{{}}{{}}}
+\bibcite{Abadi2016}{{7}{}{{}}{{}}}
+\bibcite{Kairouz2015}{{8}{}{{}}{{}}}
+\bibcite{Bun2016}{{9}{}{{}}{{}}}
+\bibcite{Dong2022}{{10}{}{{}}{{}}}
+\bibcite{Dwork2010}{{11}{}{{}}{{}}}
+\bibcite{Chan2011}{{12}{}{{}}{{}}}
+\bibcite{Bolot2013}{{13}{}{{}}{{}}}
+\bibcite{Chen2017}{{14}{}{{}}{{}}}
+\bibcite{Cardoso2022}{{15}{}{{}}{{}}}
+\bibcite{Flajolet2007}{{16}{}{{}}{{}}}
+\bibcite{Dasgupta2016}{{17}{}{{}}{{}}}
+\bibcite{DataSketches}{{18}{}{{}}{{}}}
+\bibcite{Roaring2016}{{19}{}{{}}{{}}}
+\bibcite{Heule2013}{{20}{}{{}}{{}}}
+\bibcite{Cormode2005}{{21}{}{{}}{{}}}
+\bibcite{Bar-Yossef2002}{{22}{}{{}}{{}}}
+\bibcite{Rogers2020}{{23}{}{{}}{{}}}
+\bibcite{Apple2017}{{24}{}{{}}{{}}}
+\bibcite{Erlingsson2014}{{25}{}{{}}{{}}}
+\bibcite{Bittau2017}{{26}{}{{}}{{}}}
+\bibcite{Corrigan-Gibbs2017}{{27}{}{{}}{{}}}
+\bibcite{Ding2017}{{28}{}{{}}{{}}}
+\bibcite{Wilson2020}{{29}{}{{}}{{}}}
+\bibcite{GDPR}{{30}{}{{}}{{}}}
+\bibcite{CCPA}{{31}{}{{}}{{}}}
+\bibcite{Bourtoule2021}{{32}{}{{}}{{}}}
+\bibcite{Ginart2019}{{33}{}{{}}{{}}}
+\bibcite{Cao2015}{{34}{}{{}}{{}}}
+\bibcite{Neel2021}{{35}{}{{}}{{}}}
+\bibcite{VideoDP2020}{{36}{}{{}}{{}}}
+\bibcite{Mir2011}{{37}{}{{}}{{}}}
+\bibcite{Hay2010}{{38}{}{{}}{{}}}
+\bibcite{Korolova2009}{{39}{}{{}}{{}}}
+\bibcite{Blocki2013}{{40}{}{{}}{{}}}
+\bibcite{Proserpio2014}{{41}{}{{}}{{}}}
+\newlabel{tocindent-1}{0pt}
+\newlabel{tocindent0}{0pt}
+\newlabel{tocindent1}{8.37pt}
+\newlabel{tocindent2}{14.53499pt}
+\newlabel{tocindent3}{0pt}
 \providecommand\NAT@force@numbers{}\NAT@force@numbers
-\@writefile{toc}{\contentsline {paragraph}{To finalize for submission:}{6}{section*.17}\protected@file@percent }
-\gdef \@abspage@last{6}
+\@writefile{toc}{\contentsline {section}{References}{14}{section*.56}\protected@file@percent }
+\newlabel{TotPages}{{14}{14}{}{page.14}{}}
+\gdef \@abspage@last{14}

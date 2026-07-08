@@ -1,0 +1,14 @@
+[
+  {
+    "flips": 1,
+    "true_dau": 0,
+    "est_dau": 163.6654431192906,
+    "relative_error": 163.6654431192906
+  },
+  {
+    "flips": 5,
+    "true_dau": 0,
+    "est_dau": 146.6654431192906,
+    "relative_error": 146.6654431192906
+  }
+]

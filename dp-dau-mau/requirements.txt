@@ -10,3 +10,4 @@ mypy
 ruff
 black
 pre-commit
+pyroaring

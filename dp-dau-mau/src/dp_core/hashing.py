@@ -32,7 +32,10 @@ class SaltManager:
         the same user hashes to the same key across days. This is required
         for MAU to count unique users (not user-days) within the window.
         
-        IMPORTANT: For MAU correctness, HASH_SALT_ROTATION_DAYS >= MAU_WINDOW_DAYS.
+        CRITICAL: HASH_SALT_ROTATION_DAYS must be >> MAU_WINDOW_DAYS to ensure
+        any rolling MAU window stays within a single epoch. Default is 365.
+        With rotation=30 and window=30, windows crossing epoch boundaries
+        would double-count users (different hash on each side of boundary).
         """
         rotation_epoch = day.toordinal() // max(self.rotation_days, 1)
         # Use only rotation_epoch (not day) so same user = same hash within epoch
