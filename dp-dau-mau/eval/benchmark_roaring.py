@@ -130,12 +130,39 @@ def run_pipeline_benchmark(user_counts: list[int], sketch: str, seed: int) -> li
             pipeline.get_daily_release(last_day)
             dau_samples_ms.append((time.perf_counter() - t0) * 1000)
 
+        # The very first-ever MAU query for this window: no per-day sketch is
+        # cached yet (all NUM_DAYS must be built from the activity log) *and*
+        # the (end_day, window_days) union cache is empty. This is the
+        # absolute worst-case single-shot cold latency.
+        t0 = time.perf_counter()
         pipeline.get_mau_release(last_day, NUM_DAYS)
-        mau_samples_ms = []
+        mau_cold_first_query_ms = (time.perf_counter() - t0) * 1000
+
+        # "Fresh" MAU latency: day-level sketches are warm (already built by
+        # the call above / by ingest), but the window-union memoization
+        # cache (see WindowManager.get_mau) is force-cleared before every
+        # sample -- i.e. this measures the honest per-query union-compute
+        # cost as if this exact (end_day, window_days) had never been asked
+        # for before. This is the number that matters for a *new* MAU query
+        # (a window nobody has asked for yet, e.g. a new end_day rolling in).
+        mau_fresh_samples_ms = []
+        for _ in range(NUM_QUERY_SAMPLES):
+            pipeline.window_manager._mau_cache.clear()
+            t0 = time.perf_counter()
+            pipeline.get_mau_release(last_day, NUM_DAYS)
+            mau_fresh_samples_ms.append((time.perf_counter() - t0) * 1000)
+
+        # "Cached" MAU latency: repeat queries of the *same* (end_day,
+        # window_days) -- e.g. a dashboard re-polling "MAU as of today"
+        # before the day rolls over. The union cache (memoized by a
+        # monotonic per-day version fingerprint -- see WindowManager.get_mau)
+        # makes these O(1) and byte-identical to the fresh computation.
+        pipeline.get_mau_release(last_day, NUM_DAYS)
+        mau_cached_samples_ms = []
         for _ in range(NUM_QUERY_SAMPLES):
             t0 = time.perf_counter()
             pipeline.get_mau_release(last_day, NUM_DAYS)
-            mau_samples_ms.append((time.perf_counter() - t0) * 1000)
+            mau_cached_samples_ms.append((time.perf_counter() - t0) * 1000)
 
         peak_rss_final_mb = get_peak_rss_mb()
 
@@ -150,8 +177,16 @@ def run_pipeline_benchmark(user_counts: list[int], sketch: str, seed: int) -> li
             "events_per_sec": events_per_sec,
             "dau_latency_p50_ms": statistics.median(dau_samples_ms),
             "dau_latency_p99_ms": pctl(dau_samples_ms, 99),
-            "mau_latency_p50_ms": statistics.median(mau_samples_ms),
-            "mau_latency_p99_ms": pctl(mau_samples_ms, 99),
+            "mau_cold_first_query_ms": mau_cold_first_query_ms,
+            "mau_fresh_latency_p50_ms": statistics.median(mau_fresh_samples_ms),
+            "mau_fresh_latency_p99_ms": pctl(mau_fresh_samples_ms, 99),
+            "mau_cached_latency_p50_ms": statistics.median(mau_cached_samples_ms),
+            "mau_cached_latency_p99_ms": pctl(mau_cached_samples_ms, 99),
+            # Back-compat keys: keep pointing at the "fresh" (uncached, worst
+            # case per-window) numbers so anything reading the old field
+            # names gets the honest floor, not the cache-inflated one.
+            "mau_latency_p50_ms": statistics.median(mau_fresh_samples_ms),
+            "mau_latency_p99_ms": pctl(mau_fresh_samples_ms, 99),
             "peak_rss_after_ingest_mb": peak_rss_after_ingest_mb,
             "peak_rss_final_mb": peak_rss_final_mb,
         }
