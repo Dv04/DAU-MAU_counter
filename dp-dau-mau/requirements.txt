@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 pydantic
 typer
+click<8.2  # typer 0.12.x breaks CLI option parsing under click>=8.2
 httpx
 pytest
 pytest-cov
@@ -10,3 +11,4 @@ mypy
 ruff
 black
 pre-commit
+pyroaring

@@ -1,0 +1,41 @@
+[
+  {
+    "sketch": "roaring",
+    "users": 10000,
+    "num_events": 60000,
+    "ingest_time_sec": 0.5243508815765381,
+    "events_per_sec": 114427.19390420623,
+    "dau_latency_p50_ms": 0.4132079193368554,
+    "dau_latency_p99_ms": 0.5370963620953262,
+    "mau_latency_p50_ms": 14.744624961167574,
+    "mau_latency_p99_ms": 17.265657789539546,
+    "peak_rss_after_ingest_mb": 70.859375,
+    "peak_rss_final_mb": 76.1875
+  },
+  {
+    "sketch": "roaring",
+    "users": 100000,
+    "num_events": 600000,
+    "ingest_time_sec": 5.308078050613403,
+    "events_per_sec": 113035.2632871824,
+    "dau_latency_p50_ms": 0.6955618737265468,
+    "dau_latency_p99_ms": 0.9366263961419463,
+    "mau_latency_p50_ms": 137.4010620638728,
+    "mau_latency_p99_ms": 146.02831817697734,
+    "peak_rss_after_ingest_mb": 286.9375,
+    "peak_rss_final_mb": 352.25
+  },
+  {
+    "sketch": "roaring",
+    "users": 1000000,
+    "num_events": 6000000,
+    "ingest_time_sec": 55.65009522438049,
+    "events_per_sec": 107816.52710221024,
+    "dau_latency_p50_ms": 6.643083528615534,
+    "dau_latency_p99_ms": 14.660960673354566,
+    "mau_latency_p50_ms": 2821.1267289007083,
+    "mau_latency_p99_ms": 3423.379283854738,
+    "peak_rss_after_ingest_mb": 1636.375,
+    "peak_rss_final_mb": 1815.265625
+  }
+]

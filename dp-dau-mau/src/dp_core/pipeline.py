@@ -15,11 +15,13 @@ from typing import Any, Literal
 from . import config as config_module
 from .dp_mechanisms import MechanismResult, gaussian_mechanism, laplace_mechanism
 from .hashing import hash_user_id, hash_user_root
-from .ledger import ActivityEntry, ErasureEntry, Ledger
 from .privacy_accountant import BudgetCaps, PrivacyAccountant
 from .sketches.base import SketchConfig, SketchFactory
 from .sketches.kmv_impl import KMVSketch
+from .sketches.roaring_impl import RoaringSketch
 from .sketches.set_impl import SetSketch
+from .storage.log import ActivityEntry, ErasureEntry
+from .storage.manager import PartitionedLogManager
 from .windows import WindowManager
 
 
@@ -59,14 +61,17 @@ class PipelineManager:
     def __init__(
         self,
         config: config_module.AppConfig | None = None,
-        ledger: Ledger | None = None,
+        log_manager: PartitionedLogManager | None = None,
         accountant: PrivacyAccountant | None = None,
     ) -> None:
         self.config = config or config_module.AppConfig.from_env()
-        ledgers_dir = self.config.storage.data_dir / "ledgers"
+        data_dir = self.config.storage.data_dir
+        data_dir.mkdir(parents=True, exist_ok=True)
+        # Fast ingest path: per-day append-only binary logs (see dp_core.storage)
+        # replace the previous SQLite ledger's one-INSERT-plus-commit per event.
+        self.log_manager = log_manager or PartitionedLogManager(data_dir)
+        ledgers_dir = data_dir / "ledgers"
         ledgers_dir.mkdir(parents=True, exist_ok=True)
-        ledger_path = ledgers_dir / "ledger.sqlite"
-        self.ledger = ledger or Ledger(ledger_path)
         accountant_path = ledgers_dir / "dp_budget.sqlite"
         self.accountant = accountant or PrivacyAccountant(accountant_path)
         days_per_month = 31
@@ -95,7 +100,7 @@ class PipelineManager:
             else self.config.dp.mau_budget_total
         )
         self.budgets = BudgetCaps(dau=dau_cap, mau=mau_cap)
-        self.events_loader = self.ledger.fetch_day_events
+        self.events_loader = self.log_manager.fetch_day_events
         self.sketch_factory = self._build_sketch_factory()
         self.window_manager = WindowManager(
             sketch_factory=self.sketch_factory,
@@ -121,8 +126,13 @@ class PipelineManager:
             lambda cfg: KMVSketch(cfg),
             lambda payload, cfg: KMVSketch.deserialize(payload, cfg),
         )
+        factory.register(
+            "roaring",
+            lambda cfg: RoaringSketch(cfg),
+            lambda payload, cfg: RoaringSketch.deserialize(payload, cfg),
+        )
         # Note: theta and hllpp backends were removed to simplify codebase
-        # Only 'set' and 'kmv' are supported
+        # 'set', 'kmv', and 'roaring' are supported
         if self.config.sketch.impl not in factory.backends:
             raise RuntimeError(
                 f"Requested sketch implementation '{self.config.sketch.impl}' is unavailable. "
@@ -133,67 +143,82 @@ class PipelineManager:
     def ingest_event(self, event: EventRecord) -> None:
         if event.op not in {"+", "-"}:
             raise ValueError("Event op must be '+' or '-'.")
+        # Single-event path appends directly through the manager (which flushes
+        # on read, so a subsequent query sees this event).
+        self._ingest_one(event, self.log_manager)
+
+    def ingest_batch(self, events: Iterable[EventRecord]) -> None:
+        # Fast path: a single buffered writer amortizes write() syscalls across
+        # the whole batch. Erasures/tombstones still route through it; the
+        # writer is flushed on context exit before any query can run.
+        with self.log_manager.buffered_writer() as writer:
+            for event in events:
+                if event.op not in {"+", "-"}:
+                    raise ValueError("Event op must be '+' or '-'.")
+                self._ingest_one(event, writer)
+
+    def _ingest_one(self, event: EventRecord, writer: Any) -> None:
+        """Ingest one event, appending activity records via ``writer``.
+
+        ``writer`` exposes ``append_activity`` and is either the
+        PartitionedLogManager (single-event path) or a PartitionedBufferedWriter
+        (batch path). Erasure records are rare and go through the manager
+        directly.
+        """
         day_str = event.day.isoformat()
         user_key = hash_user_id(event.user_id, event.day, self.config)
         user_root = hash_user_root(event.user_id, self.config)
 
-        activity_entry = ActivityEntry(
-            day=day_str,
-            user_key=user_key,
-            user_root=user_root,
-            op=event.op,
-            metadata=event.as_json(),
+        writer.append_activity(
+            ActivityEntry(
+                day=day_str,
+                user_key=user_key,
+                user_root=user_root,
+                op=event.op,
+                metadata=event.as_json(),
+            )
         )
-        self.ledger.record_activity(activity_entry)
         self.window_manager.mark_dirty(day_str)
 
         if event.op == "-":
             days = event.metadata.get("days")
             if not days:
-                days = self.ledger.days_for_user(user_root)
+                days = self.log_manager.days_for_user(user_root)
             if day_str not in days:
                 days.append(day_str)
-            
-            # Write tombstone events for each affected historical day
-            # This enables retroactive erasure so rebuilding those days removes the user
-            tombstone_entries: list[ActivityEntry] = []
+
+            # Write tombstone events for each affected historical day so
+            # rebuilding those days removes the user (retroactive erasure).
             for affected_day_str in set(days):
                 affected_day = dt.date.fromisoformat(affected_day_str)
-                # Compute the correct user_key for that day's rotation epoch
                 day_user_key = hash_user_id(event.user_id, affected_day, self.config)
-                tombstone = ActivityEntry(
-                    day=affected_day_str,
-                    user_key=day_user_key,
-                    user_root=user_root,
-                    op="-",
-                    metadata=json.dumps({"tombstone": True, "source_day": day_str}),
+                writer.append_activity(
+                    ActivityEntry(
+                        day=affected_day_str,
+                        user_key=day_user_key,
+                        user_root=user_root,
+                        op="-",
+                        metadata=json.dumps({"tombstone": True, "source_day": day_str}),
+                    )
                 )
-                tombstone_entries.append(tombstone)
-            
-            # Batch insert all tombstones
-            self.ledger.record_activity_batch(tombstone_entries)
-            
-            # Record erasure entry for auditing
+
+            # Record erasure entry for auditing.
             erasure_entry = ErasureEntry(
                 erasure_id=None, user_root=user_root, days=list(set(days)), pending=True
             )
-            self.ledger.record_erasure(erasure_entry)
-            
-            # Mark all affected days dirty for rebuild
+            self.log_manager.append_erasure(erasure_entry)
+
+            # Mark all affected days dirty for rebuild.
             for affected_day_str in set(days):
                 self.window_manager.mark_dirty(affected_day_str)
 
-    def ingest_batch(self, events: Iterable[EventRecord]) -> None:
-        for event in events:
-            self.ingest_event(event)
-
     def replay_deletions(self) -> None:
-        pending = self.ledger.pending_erasures()
+        pending = self.log_manager.pending_erasures()
         for erasure in pending:
             for day in erasure.days:
                 self.window_manager.mark_dirty(day)
             if erasure.erasure_id is not None:
-                self.ledger.mark_erasure_processed(erasure.erasure_id)
+                self.log_manager.mark_erasure_processed(erasure.erasure_id)
 
     def _release(
         self,
