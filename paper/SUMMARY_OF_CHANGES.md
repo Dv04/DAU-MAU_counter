@@ -4,6 +4,90 @@ Prepared for resubmission (PoPETs 2027.2 or later, per the 2026.4 decision). Thi
 document maps every reviewer concern from the 2026.4 reviews (45A–45D) and the
 meta-review to the change made. Section numbers refer to the revised paper.
 
+## Delta since 2026.4: measured results + two strengtheners (`popets-strengtheners` branch)
+
+This section documents the changes made **on top of** the 2026.4 revision described
+below. The 2026.4 revision fixed the paper's *formal* content (definitions, theorems,
+threat model). This delta fixes the paper's *performance evaluation* so that every
+quantitative claim is reproducible from the code actually committed to this branch,
+using the measured numbers in `ROARING_BENCHMARK.md` and `STRENGTHENERS_RESULTS.md`
+(both in the repo root). Framing: honest cold-vs-cached reporting, never restoring an
+old claim the measurements don't support. Where a number changed, we state the old
+claim and the measured replacement explicitly.
+
+### What shipped on this branch (previously missing/orphaned)
+
+- A **real Roaring Bitmap backend** (`RoaringSketch`, `src/dp_core/sketches/roaring_impl.py`),
+  hashing to **64 bits** (personalized BLAKE2b), wired into the pipeline's backend
+  factory. Prior to this branch, the paper described a Roaring backend and cited
+  32-bit hashing, but no Roaring implementation was committed to any branch, and the
+  code that did exist elsewhere (uncommitted, orphaned) used a lossy 32-bit truncation
+  that collides distinct users (measured: on the order of 100 colliding pairs at 1M
+  users). §6 (Implementation) is corrected to describe the 64-bit design that ships,
+  and to explain why 32-bit was rejected rather than silently kept as the description.
+- A **fast, append-only binary-log ingest engine** (`src/dp_core/storage/`), replacing
+  the previously-committed per-event SQLite ledger as the pipeline's ingest path.
+- A **version-fingerprinted window-union cache** (`WindowManager.get_mau`,
+  `src/dp_core/windows.py`): memoizes the exact 30-day union for repeat MAU queries of
+  an unchanged window, invalidated per-day on ingest or erasure. This is the pre-noise
+  analogue of the paper's existing "Noise Caching with Versioning" mechanism (§4.5), and
+  is now documented as its own paragraph, "Window-Union Caching with Versioning
+  (Pre-Noise)."
+- All 56 tests green on this branch; `ROARING_BENCHMARK.md` and `STRENGTHENERS_RESULTS.md`
+  document methodology and full measured tables.
+
+### Claim-by-claim: old (unreproducible) → measured (this branch)
+
+| # | Old claim (paper, pre-strengtheners) | Measured, this branch | Where fixed |
+|---|---|---|---|
+| 1 | 115,000 events/sec ingest | **$\approx$107,817 events/s at 1M users** (114,427/s at 10k) — matches within ~6%, now reproducible on the committed binary-log engine | Abstract, Intro contributions, §6 (Implementation), §7.8 (Performance) |
+| 2 | 42$\times$ ingest speedup vs. an unmeasured "naive Python" baseline (2,700 events/s) | **$\approx$11.75$\times$** vs. the previously-committed, measured per-event SQLite ledger (9,176 events/s $\to$ 107,817 events/s); the 2,700/s baseline was never re-measured on this branch, so the 42$\times$ figure is retired rather than restated | §7.8 (Performance), Table "Ingest Throughput & Peak Memory" |
+| 3 | 202 ms MAU query latency (p99) | **Dropped entirely.** It came from an orphaned, uncommitted, lossy 32-bit-truncated backend variant that silently collides users — not exact, and not what ships. Replaced with two honest numbers: **fresh/first query of a 30-day window $\approx$2.7 s p50 / $\approx$4.5 s p99 at 1M users** (the real cost of an exact 64-bit Roaring union of 30 daily bitmaps), and **cached/repeat query of the same window $\approx$0.57 ms p50 / $\approx$1.45 ms p99 at every scale tested (10k–1M)**, via the new version-fingerprinted window-union cache — exact, not approximate | Abstract, Intro contributions, §4.3 (State Backend), §4.5 (new "Window-Union Caching with Versioning" paragraph), §7.8 (Performance, with a dedicated "why we no longer report a single MAU latency number" paragraph) |
+| 4 | 223$\times$ MAU speedup vs. naive baseline (45.2 s $\to$ 0.202 s) | **Retired.** It was computed against the unreproducible 202 ms figure. Honest fresh-query comparison against the same naive 45.2 s baseline is only $\approx$10$\times$; a cached repeat query is $\approx$31,000$\times$ faster than that baseline, reported but flagged as not apples-to-apples (the naive baseline never had the option to cache a repeat query either) | §7.8 (Performance) |
+| 5 | $\sim$1.15 GB memory footprint at 1M users | **$\approx$1.55–1.64 GB whole-process on the fast binary-log path** (measured). The old 1.15 GB figure matches the *previously-committed SQLite-ledger path* (measured here at 1,215.6 MB), not the fast path the evaluation now uses — this is stated explicitly rather than silently carried forward under the new engine's name | §7.8 (Performance), §9 (Discussion, Scalability Considerations) |
+| 6 | (not previously reported) Roaring vs. plain-`set` memory comparison | **New, measured:** Roaring's serialized state is $\approx$1.59$\times$ smaller than a plain Python `set` (22.0 vs. 35.0 bytes/user, stable across scale), and process RSS at 6M user-days is $\approx$33% lower (526.5 MB vs. 784.9 MB). Also disclosed: on a genuinely new window, `set`'s C-level hash-set union is actually *faster* than Roaring's sparse 64-bit union (778 ms vs. 2,821 ms p50 at 1M) — Roaring's advantage is memory, not fresh-query speed, at this exact/64-bit configuration | §7.8 (Performance), new Table "Set vs. Roaring" |
+| 7 | 32-bit user-ID hashing described in §6 (Implementation) | **Corrected to 64-bit** (personalized BLAKE2b), matching the committed `RoaringSketch`. Prose now explains why 64-bit was chosen (exactness) and its performance consequence (sparse, non-SIMD-friendly containers, hence the fresh-query union cost above) | §6 (Implementation) |
+
+### Two strengtheners added to the evaluation
+
+1. **History-independence exhibit** (new §7.3, "History-Independence Exhibit," forward-referenced
+   from Definition "History-Independent Deletion" in §3.4): empirically tests the paper's own
+   conditional definition against the repository's actual backend code, rather than leaving it
+   asserted. Result: the exact `set` backend and the committed exact Roaring backend match the
+   rebuild-from-$D\setminus\{u\}$ state in **100% of 2,460 trials each**, across every regime
+   tested (including production $k=4096$); the shipped `kmv` sketch matches unconditionally only
+   when $n \le k$, and **diverges in 23–35% of trials once bottom-$k$ truncation occurs** (mean
+   cardinality error 10.4–3,725, worst case up to 16,370 at production $k$). This is a genuine,
+   reproducible confirmation of the paper's own conditional claim, caught empirically rather than
+   assumed. A Theta backend is named in the reference architecture but does not exist in the
+   repository, committed or otherwise; reported as untested (N/A), not simulated.
+2. **Tree-aggregation comparison** (Future Work, "Tree Aggregation for Smoother Releases," and
+   Limitations): quantifies the potential benefit of tree aggregation using the repo's own
+   `PrivacyAccountant._best_from_curve` on a synthesized 365-release RDP curve, rather than
+   hand-derived formulas alone. Finding is asymmetric, reported honestly rather than as a uniform
+   win: for **DAU** (Laplace, $\delta=0$, naive summation only), tree aggregation could reduce the
+   365-day cumulative budget from $\varepsilon\approx109.5$ to $\varepsilon\approx9.49$ for the
+   same per-release accuracy ($\approx$11.5$\times$; confirmed by an 800-trial Monte Carlo
+   simulation on a disclosed synthetic additive proxy, measuring 14–35$\times$ error reduction at
+   a matched budget). For **MAU** (Gaussian), the shipped accountant's existing RDP composition
+   already achieves $\approx$16.4$\times$ over naive summation ($\varepsilon\approx11.1$ vs.
+   $\approx182.5$) independent of tree aggregation; layering a 10-level tree on top of that same
+   budget adds a smaller, real gain (up to $\approx$6$\times$ per-level accuracy for
+   low-tree-depth releases). This asymmetry — large win where the shipped mechanism only has
+   naive composition (DAU), smaller-but-real win where it already composes tightly (MAU) — is
+   reported as the honest takeaway rather than a single flattering number.
+
+### Not changed
+
+- The 32-bit-vs-64-bit and cold-vs-cached corrections above do not touch the paper's *formal*
+  content (Definitions, Theorem, Lemma, Propositions, proofs) from the 2026.4 revision, which
+  remains as described below.
+- DAU/MAU accuracy-vs-$\varepsilon$ results (Table "Accuracy metrics") are unaffected — the exact
+  backend's accuracy story was never based on the retracted 32-bit or 202 ms figures.
+- The adversarial "toggle storm" latency figure ($<$210 ms for MAU, §7.5) describes a
+  500-user workload, not the 1M-user scale corrected above, and was not re-measured as part of
+  this delta; it is left as-is.
+
 ## Meta-review critical weaknesses
 
 **(1) "Sections 3–6 too high-level; insufficient detail on how techniques combine."**

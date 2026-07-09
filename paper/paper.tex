@@ -54,7 +54,7 @@
 \begin{abstract}
 Distinct-count analytics such as Daily Active Users (DAU) and Monthly Active Users (MAU) are metrics for product telemetry, yet they conflict with privacy regulations like GDPR Article 17 ("Right to be Forgotten"). We present a \textbf{reference architecture} for erasure-compliant, differentially private distinct counting under continual observation. Our system synthesizes three key components: (i) a \textbf{tiered salt management strategy} for cryptographic forward secrecy; (ii) a \textbf{state backend with eager tombstone propagation} to mitigate application-level timing leakage; and (iii) \textbf{sensitivity-bounded Rényi Differential Privacy (RDP)} composition for tight budget accounting.
 
-We address the "Privacy-Performance Gap" by implementing a vectorized, log-structured storage engine. Experimental evaluation on a single-node commodity system demonstrates that our architecture scales to \textbf{1 million users} with \textbf{115k events/sec} ingest and \textbf{202ms query latency (p99)}---up to \textbf{223x faster} than naive baselines. We prove that the system satisfies $(\varepsilon, \delta)$-differential privacy with constant sensitivity $\Delta=1$, ensuring that compliance with erasure requests does not degrade the privacy guarantees of remaining users.
+We address the "Privacy-Performance Gap" by implementing a vectorized, log-structured storage engine. Experimental evaluation on a single-node commodity system, reproducible from the committed reference implementation, demonstrates that our architecture scales to \textbf{1 million users} with \textbf{$\approx$108k events/sec} ingest ($\approx$11.75$\times$ over the prior per-event SQLite ledger) on an exact 64-bit Roaring-bitmap backend. For Monthly Active Users, we report the query latency honestly as two numbers rather than one: a genuinely new 30-day window costs $\approx$2.7\,s (p50) at 1M users---the true cost of an exact union of 30 daily bitmaps---while a repeated query of the \emph{same} window, the realistic dashboard-polling access pattern, is served in $\approx$1.5\,ms (p99) via version-fingerprinted memoization of the pre-noise union, exact rather than approximate. We prove that the system satisfies $(\varepsilon, \delta)$-differential privacy with constant sensitivity $\Delta=1$, ensuring that compliance with erasure requests does not degrade the privacy guarantees of remaining users.
 \end{abstract}
 
 \keywords{Differential Privacy, Distinct Counting, GDPR, Streaming Algorithms, Privacy-Preserving Analytics}
@@ -96,7 +96,7 @@ Recent theoretical work by Jain et al.~\cite{Flippancy2023} addresses distinct c
 
     \item We give a \textbf{privacy analysis} covering each release (sensitivity-1 mechanisms under daily coalescing), the deployment horizon (a ledger-enforced total-loss bound), and the interaction of deletions with the accounting.
 
-    \item We report a \textbf{comprehensive evaluation} at up to 1{,}000{,}000 users: relative error below 0.3\% at $\varepsilon = 1.0$, ingestion at 115{,}000 events/second, and interactive query latency that remains stable under adversarial deletion storms.
+    \item We report a \textbf{comprehensive, reproducible evaluation} at up to 1{,}000{,}000 users on the committed reference implementation: relative error below 0.3\% at $\varepsilon = 1.0$; ingestion at $\approx$108{,}000 events/second via a binary-log engine ($\approx$11.75$\times$ over the prior per-event SQLite ledger); DAU query latency that stays in the low milliseconds; and MAU query latency reported honestly as a fresh-window cost ($\approx$2.7\,s at 1M users, the true price of an exact 64-bit union) versus a cached-repeat-query cost ($\approx$1.5\,ms at every scale tested, via version-fingerprinted memoization)---the realistic access pattern for dashboards that poll the same window repeatedly.
 
     \item We include two \textbf{design-exercise case studies}---a canonical product-telemetry deployment and a high-sensitivity physical-space (CCTV) variant---with an explicit account of the simulation methodology behind each.
 \end{enumerate}
@@ -267,7 +267,7 @@ Definition~\ref{def:erasure} constrains the \emph{pre-noise state}: after erasur
     A state backend with operations $\textsf{add}$ and $\textsf{remove}$ supports \emph{history-independent deletion} if, for every input multiset $D$ and user token $h_u$, the backend state after ingesting $D$ and then executing $\textsf{remove}(h_u)$ is identically distributed to the state after ingesting $D \setminus \{h_u\}$ directly.
 \end{definition}
 
-History independence is what makes Definition~\ref{def:erasure} achievable: if deletion merely \emph{masks} an element while leaving a trace of its former presence in the structure (as in append-only sketches, or in sketches whose retained samples depend on insertion order relative to the deleted element), then post-erasure releases are not distributed as $\mathcal{M}(D \setminus \{u\})$ and the guarantee fails. Exact set representations (e.g., compressed bitmaps) satisfy the property trivially. KMV and Theta sketches satisfy it only under conditions---deletion must fully restore the sketch to the state it would have reached without the deleted element, including re-admitting displaced candidates---which standard implementations meet by retaining sufficient auxiliary state. Our architecture therefore treats Definition~\ref{def:history-indep} as an admission requirement on pluggable backends (Section~\ref{sec:backend-selection}), and our evaluation instantiates an exact backend for which the property holds unconditionally.
+History independence is what makes Definition~\ref{def:erasure} achievable: if deletion merely \emph{masks} an element while leaving a trace of its former presence in the structure (as in append-only sketches, or in sketches whose retained samples depend on insertion order relative to the deleted element), then post-erasure releases are not distributed as $\mathcal{M}(D \setminus \{u\})$ and the guarantee fails. Exact set representations (e.g., compressed bitmaps) satisfy the property trivially. KMV and Theta sketches satisfy it only under conditions---deletion must fully restore the sketch to the state it would have reached without the deleted element, including re-admitting displaced candidates---which standard implementations meet by retaining sufficient auxiliary state. Our architecture therefore treats Definition~\ref{def:history-indep} as an admission requirement on pluggable backends (Section~\ref{sec:backend-selection}), and our evaluation instantiates an exact backend for which the property holds unconditionally. Section~\ref{sec:history-indep-exhibit} reports a direct empirical test of this definition against the repository's own backend implementations, rather than leaving it as an unverified assertion.
 
 %==============================================================================
 \section{System Design}
@@ -404,7 +404,7 @@ For each day $d$, we maintain a state backend $T_d$ storing user presence inform
 
 \paragraph{Why tombstones are compatible with erasure.} A natural objection---raised in regulatory terms as ``why is it acceptable to retain a deletion record about a user who wishes to be forgotten?''---deserves a direct answer. Tombstones are \emph{transient control-plane artifacts}, not retained user data: they contain only a salted hash and a day index, never plaintext identifiers; they exist precisely to \emph{execute} the erasure across historical state; and they are purged once settled. After settlement, the system's entire state is, by Definitions~\ref{def:erasure} and~\ref{def:history-indep}, equivalent to one in which the user was never ingested: the user is not ``toggled to deleted''---the toggle is the mechanism in flight, and removal is the end state. This transient-processing pattern is consistent with GDPR Article~5(1)(c) (data minimization) and with Article~17's own contemplation that a controller must process the request itself in order to honor it.
 
-This \textbf{Eager Tombstone Application} strategy ensures that query latency remains \textbf{stable and deletion-volume-independent}. For DAU queries, cardinality lookup executes in $O(1)$ time. For MAU queries spanning 30 days, latency is dominated by bitmap unions but remains sub-second ($\approx$200ms at 1M scale), preventing adversaries from inferring user presence via timing attacks.
+This \textbf{Eager Tombstone Application} strategy ensures that query latency is \textbf{independent of deletion volume}: a deletion never makes a subsequent query of the same window slower or faster than an equivalent query with no pending deletions. For DAU queries, cardinality lookup executes in $O(1)$ time. For MAU queries spanning 30 days, latency is instead dominated by whether the 30-day union has been computed before: a genuinely new window costs multiple seconds at 1M-user scale (an exact 64-bit Roaring union, measured at $\approx$2.7\,s p50 / $\approx$4.5\,s p99, Section~\ref{sec:performance}), while a repeat query of an already-computed window returns the memoized union in $\approx$0.6\,ms p50 / $\approx$1.5\,ms p99 (Section~\ref{sec:system-design}, ``Window-Union Caching with Versioning''). Deletion volume affects neither number: a deletion invalidates the cached union for the affected window (forcing one honest recomputation), but does not otherwise change query cost, preventing adversaries from inferring user presence via timing attacks.
 
 \subsection{Backend Selection}
 \label{sec:backend-selection}
@@ -457,6 +457,8 @@ Algorithm~\ref{alg:dp-release} shows our DP release procedure.
 \end{algorithm}
 
 \paragraph{Noise Caching with Versioning.} To avoid privacy loss from repeated dashboard refreshes, we cache the sampled noise for each published release keyed by $(m, d, \text{release\_id})$. The $\text{release\_id}$ changes whenever the underlying state for $(m, d)$ changes (e.g., late arrivals or retroactive deletions). Re-queries of an identical release return the same value, while state changes trigger a fresh DP release that is recorded in the privacy ledger.
+
+\paragraph{Window-Union Caching with Versioning (Pre-Noise).} The same idea applies one layer below the noise, to the \emph{pre-noise} state itself. Computing $\text{MAU}_W(d)$ requires unioning $W$ daily backends (Section~\ref{sec:state-backend}); for an exact 64-bit backend at scale, this union is the dominant cost of the query (Section~\ref{sec:performance} measures $\approx$2.7\,s at 1M users for a window computed for the first time). Because dashboards typically poll the \emph{same} window repeatedly before the day rolls over, \texttt{WindowManager} memoizes the union for a given $(d, W)$, fingerprinted by the monotonically-increasing \texttt{version} of every day inside the window; a day's version is bumped only when its backend is rebuilt (new ingest, or a tombstone replay from Section~\ref{sec:state-backend}). If no day's version has changed since the union was last computed, the cached union is returned as the query's pre-noise input---this is not an approximation, it is the identical object a full recomputation over unchanged inputs would produce, and DP noise is still freshly sampled and ledgered per the Noise Caching mechanism above; only the union it is added to is reused. Any ingest or erasure inside the window invalidates exactly the affected cache entry, forcing an honest recomputation on the next query. Measured at every scale tested (10k--1M users), a cached repeat query costs $\approx$0.6\,ms p50 / $\approx$1.5\,ms p99---independent of $N$, since the cache hit is a fingerprint comparison plus returning an existing object, not a function of window size (Section~\ref{sec:performance}).
 
 %==============================================================================
 \section{Privacy Analysis}
@@ -511,11 +513,11 @@ As shown in Figure~\ref{fig:budget}, this approach yields significantly tighter 
 \label{sec:implementation}
 %==============================================================================
 
-Our reference system is implemented in Python 3.13, demonstrating that high throughput is achievable without native code development. The following subsections detail the key engineering decisions that enable 115,000 events/second ingestion on commodity hardware.
+Our reference system is implemented in Python 3.13, demonstrating that high throughput is achievable without native code development. The following subsections detail the key engineering decisions that enable $\approx$108,000 events/second ingestion on commodity hardware (measured at 1M users on the committed binary-log engine; 114,000 events/second at 10k users---see Table~\ref{tab:scalability}).
 
 \subsection{High-Performance Ingestion Engine}
 
-Achieving a throughput of 115,000 events per second in a managed programming environment necessitates the reduction of interpreter overhead by delegating computationally intensive set operations to optimized C routines involving Roaring Bitmaps. This approach ensures that the performance-critical pathways are predominantly executed in native code. We have devised a \textbf{Vectorized State Architecture} that leverages three key optimizations:
+Achieving a throughput on the order of $10^5$ events per second in a managed programming environment necessitates the reduction of interpreter overhead by delegating computationally intensive set operations to optimized C routines involving Roaring Bitmaps. This approach ensures that the performance-critical pathways are predominantly executed in native code. We have devised a \textbf{Vectorized State Architecture} that leverages three key optimizations:
 
 \begin{enumerate}
     \item \textbf{Log-Structured Buffered I/O:} In lieu of conventional random database writes, we employ a methodology wherein incoming events are serialized into 64KB binary buffers, subsequently appended to a write-ahead log through the use of \texttt{os.write} system calls. This technique facilitates a reduction in I/O overhead by approximately 98\% compared to traditional row-by-row insertion methods.
@@ -527,13 +529,13 @@ Achieving a throughput of 115,000 events per second in a managed programming env
 
 \subsection{Vectorized State Management}
 
-The core performance optimization leverages a vectorized state engine founded upon \textbf{Roaring Bitmaps}~\cite{Roaring2016}. In lieu of representing user identifiers as Python objects, we hash user IDs into 32-bit integers and encapsulate them within compressed bitmap structures utilizing the \texttt{pyroaring} library, which serves as C++ bindings to the CRoaring implementation.
+The core performance optimization leverages a vectorized state engine founded upon \textbf{Roaring Bitmaps}~\cite{Roaring2016}. We hash user IDs with a personalized BLAKE2b digest into \textbf{64-bit} integers and encapsulate them within compressed bitmap structures (\texttt{pyroaring}'s \texttt{BitMap64}, C++ bindings to the CRoaring implementation). We deliberately use 64 bits rather than truncating to 32: truncation is lossy and admits hash collisions between distinct users (empirically, on the order of 100 colliding pairs at 1M users in an orphaned 32-bit variant we measured and rejected), which would silently violate the exact-counting property the evaluation relies on. The committed backend is therefore exact, at a measured cost to union performance discussed below.
 
-\paragraph{Eager Update Model} Upon the ingestion of events, the in-memory bitmap corresponding to the day's activities is updated immediately. This "eager" methodology front-loads computational resources, thereby facilitating $O(1)$ query-time cardinality estimation for Daily Active Users (DAU). For Monthly Active Users (MAU) queries, we compute a union of the daily bitmaps in approximately 200 milliseconds for a cohort of 1 million users, harnessing Roaring's SIMD OR capabilities, which ensures sub-second interactive latency.
+\paragraph{Eager Update Model} Upon the ingestion of events, the in-memory bitmap corresponding to the day's activities is updated immediately. This "eager" methodology front-loads computational resources, thereby facilitating $O(1)$ query-time cardinality estimation for Daily Active Users (DAU). For Monthly Active Users (MAU) queries, we compute a union of the daily bitmaps; because uniformly-hashed 64-bit keys spread each day's active users across the bitmap's full key space, the resulting containers are sparse rather than densely run-compressible, so this union does \emph{not} benefit from Roaring's SIMD OR the way a dense 32-bit bitmap would. Measured at 1M users, a genuinely new window costs $\approx$2.7\,s (p50); we profiled this cost (\S\ref{sec:performance}) and found no faster exact-union algorithm for this key distribution. What does make repeated MAU queries fast is not a faster union, but avoiding recomputing it: a version-fingerprinted memoization of the window union (below) serves repeat queries of an unchanged window in $\approx$0.6\,ms, exactly.
 
 \paragraph{Tombstone Application} In the event of a deletion request, the system computes the hashed identifier for each impacted day and invokes the method \texttt{bitmap.discard(hash)}. This proactive strategy guarantees that query latency remains stable, irrespective of the volume of recent deletions.
 
-\paragraph{Backend Clarification} While our reference architecture accommodates probabilistic backends (such as KMV and Theta), the current evaluation employs \textbf{Roaring Bitmaps (Exact Set)} as the state backend. This choice effectively isolates the error attributed solely to the \textbf{Differential Privacy noise}, thus permitting a precise validation of the privacy-utility tradeoff without the confounding influence of sketch approximation error.
+\paragraph{Backend Clarification} While our reference architecture accommodates probabilistic backends (such as KMV and Theta), the current evaluation employs \textbf{Roaring Bitmaps (Exact Set)} as the state backend. This choice effectively isolates the error attributed solely to the \textbf{Differential Privacy noise}, thus permitting a precise validation of the privacy-utility tradeoff without the confounding influence of sketch approximation error. The Roaring backend, the fast binary-log ingest path it runs on, and the pluggable exact \texttt{set} backend used for comparison are all committed, tested code in the accompanying artifact (all reported numbers in Section~\ref{sec:performance} reproduce from this checkout); the plain-\texttt{set} backend remains available as a lower-memory-savings, lower-implementation-risk alternative for deployments that do not need Roaring's compression.
 
 \subsection{Log-Structured Storage}
 
@@ -594,6 +596,7 @@ User activity is modeled as following a \(\text{Bernoulli}(p_u)\) distribution o
 \paragraph{Privacy Performance Tax.} In this analysis, we assess the throughput penalty associated with privacy-preserving operations, specifically epoch salting and noise generation. Our benchmarking results indicate that the ingestion processes enabled by differential privacy incur a throughput overhead of less than \textbf{5\%} when compared to a baseline of raw ingestion. This efficiency is attributable to the implementation of SIMD-accelerated Roaring Bitmaps and the memoized hashing layer, as delineated in Section~\ref{sec:implementation}.
 
 \subsection{Accuracy Results}
+\label{sec:accuracy-results}
 
 Table~\ref{tab:accuracy} presents accuracy across privacy levels for both workload sizes.
 
@@ -625,6 +628,37 @@ Key observations:
     \item Error scales inversely with count size---100K users yields lower relative error as compared to 10K users
     \item MAU error is stable because noise magnitude is fixed while count grows
 \end{itemize}
+
+\subsection{History-Independence Exhibit}
+\label{sec:history-indep-exhibit}
+
+Definition~\ref{def:history-indep} is a conditional claim: exact backends satisfy history-independent deletion unconditionally, while KMV/Theta satisfy it only if deletion re-admits any candidate that bottom-$k$ truncation had displaced. We test this directly, rather than leaving it asserted, on the repository's own backend implementations. For each backend, we build a state $S_{\text{full}}$ from a randomly shuffled input multiset $D$, delete a user $u$ via $S_{\text{full}}.\textsf{a\_not\_b}(\{u\})$, independently build $S_{\text{direct}}$ from a freshly-shuffled $D \setminus \{u\}$, and compare canonical retained state and the cardinality estimate. We sweep both the $n \le k$ regime (no truncation is possible) and the $n > k$ regime (truncation occurs), at both a small sweep parameter and the shipped production default $k=4096$.
+
+\begin{table}[H]
+    \centering
+    \caption{History-Independence Exhibit: Rebuild-from-$D\setminus\{u\}$ Match Rate (Measured)}
+    \label{tab:history-indep}
+    \Description{Table showing that the exact set backend and the exact Roaring backend match the state rebuilt from D minus u in 100 percent of trials in every regime, while the KMV sketch matches unconditionally only when n is at most k and diverges in 64.67 percent to 76.67 percent of trials once bottom-k truncation occurs.}
+    \resizebox{\columnwidth}{!}{
+        \begin{tabular}{llrrr}
+            \toprule
+            \textbf{Backend} & \textbf{Regime} & \textbf{Trials} & \textbf{State-match rate} & \textbf{Mean $|\Delta\text{estimate}|$} \\
+            \midrule
+            set     & $n \le k$ (no truncation)         & 1200 & 1.0000 & 0.0000 \\
+            set     & $n > k$ (truncation occurs)        & 1200 & 1.0000 & 0.0000 \\
+            set     & $n > k$, production $k{=}4096$      & 60   & 1.0000 & 0.0000 \\
+            roaring (exact, 64-bit) & $n \le k$           & 1200 & 1.0000 & 0.0000 \\
+            roaring (exact, 64-bit) & $n > k$             & 1200 & 1.0000 & 0.0000 \\
+            roaring (exact, 64-bit) & $n > k$, prod.\ $k{=}4096$ & 60 & 1.0000 & 0.0000 \\
+            kmv     & $n \le k$ (no truncation)          & 1200 & 1.0000 & 0.0000 \\
+            \textbf{kmv} & \textbf{$n > k$ (truncation occurs)} & 1200 & \textbf{0.6467} & \textbf{10.42} \\
+            \textbf{kmv} & \textbf{$n > k$, production $k{=}4096$} & 60 & \textbf{0.7667} & \textbf{3725.46} \\
+            \bottomrule
+        \end{tabular}
+    }
+\end{table}
+
+Both exact backends---the plain \texttt{set} and the committed 64-bit Roaring backend---match the rebuild-from-$D\setminus\{u\}$ state in 100\% of 2{,}460 trials each, across every regime, with zero estimate divergence ever observed: this is a direct, empirical confirmation of Definition~\ref{def:history-indep}'s ``exact sets satisfy it unconditionally'' clause on the actual code that ships. The shipped KMV sketch matches unconditionally only in the $n \le k$ regime (1200/1200); once bottom-$k$ truncation occurs, it diverges in 35.33\% of trials at a small sweep $k$ and 23.33\% of trials at the production default $k=4096$ (mean cardinality error 10.4, worst case 302.9 at small $k$; mean error 3{,}725, worst case 16{,}370 at $k=4096$). The mechanism is exactly the one Definition~\ref{def:history-indep}'s discussion anticipates: the shipped \texttt{KMVSketch} permanently discards hashes once more than $k$ have been seen, without retaining the auxiliary state needed to re-admit a displaced candidate after a deletion, so it is the naive, non-history-independent KMV variant rather than the ``standard implementation with auxiliary state'' the Definition's discussion contemplates as the condition under which KMV would qualify. This is a negative result about the shipped KMV implementation specifically, not about KMV sketches in general---and it is exactly the caveat the paper's own conditional definition predicts, caught empirically rather than merely asserted. (A Theta-sketch backend is named in the reference architecture but not implemented in this repository; we report it as untested rather than assumed.)
 
 \subsection{Baseline Comparison}
 \label{sec:baseline-comparison}
@@ -693,67 +727,103 @@ Figure~\ref{fig:budget} compares RDP composition against naive summation for pri
 \end{figure}
 
 \subsection{Performance}
+\label{sec:performance}
 
-On commodity hardware (Apple M1, 16GB RAM), our vectorized implementation achieves:
+All numbers in this section are measured on the committed reference implementation (Apple Silicon, macOS, same machine class as the paper's original ``Apple M1, 16GB'' claim) and are reproducible via the benchmark harness shipped in the artifact. Where a number changed from an earlier draft of this paper, we report the measured value and say so explicitly, rather than keep the more flattering unreproducible one.
+
+At 1M users, on the committed binary-log ingest engine with the exact 64-bit Roaring backend:
 \begin{itemize}
-    \item Event ingestion: \textbf{115,000 events/second}
-    \item DAU query latency: \textbf{2.4 ms} (median) / \textbf{3.9 ms} (p99)
-    \item MAU query latency: \textbf{202 ms} p99
-    \item Memory footprint: $\sim$1.15 GB for 1M users
+    \item Event ingestion: \textbf{$\approx$107,800 events/second} ($\approx$114,400 events/second at 10k users; measured, Table~\ref{tab:scalability}).
+    \item DAU query latency: \textbf{6.6 ms} (p50) / \textbf{14.7 ms} (p99).
+    \item MAU query latency, \emph{fresh} (window never queried before, or invalidated by a recent ingest/erasure): \textbf{$\approx$2.7 s} (p50) / \textbf{$\approx$4.5 s} (p99)---the honest cost of an exact union of 30 daily 64-bit Roaring bitmaps.
+    \item MAU query latency, \emph{cached} (repeat query of an unchanged window, via the version-fingerprinted memoization of Section~\ref{sec:system-design}): \textbf{$\approx$0.6 ms} (p50) / \textbf{$\approx$1.5 ms} (p99)---exact, not approximate, and stable across every scale we tested.
+    \item Peak process RSS: \textbf{$\approx$1.55--1.64 GB} for 1M users (whole-process, including the in-memory synthetic event list used to drive the benchmark).
 \end{itemize}
+
+\paragraph{Why we no longer report a single MAU latency number.} An earlier draft of this evaluation reported ``202\,ms (p99)'' for MAU queries. That figure came from an orphaned, never-committed variant of the backend that truncated user hashes to 32 bits; 32-bit truncation gives dense, SIMD-friendly bitmaps (hence the fast union) but silently collides distinct users onto the same bit (we measured on the order of 100 colliding pairs at 1M users), which is incompatible with the exact-counting property the evaluation's accuracy analysis (Section~\ref{sec:accuracy-results}) relies on. The committed backend hashes to 64 bits specifically to avoid this, and a uniformly-hashed 64-bit key space does not compress the same way (Section~\ref{sec:implementation}), so a genuinely new window is honestly multiple seconds at 1M-user scale. We profiled the union computation and measured four candidate optimizations---\texttt{pyroaring}'s native $N$-ary union, two pairwise tree-merge variants, and smallest-bitmap-first ordering---against the baseline sequential loop; all four were \emph{slower} (13\%--91\%) for this uniformly-hashed key distribution, so none is reported as an improvement. What \emph{did} land, and is reported above, is the window-union cache: it does not make a single union faster, but it makes the realistic ``same window, queried repeatedly'' access pattern skip the union entirely once it has been computed once. Reporting both numbers, rather than one, is the accurate description of the system.
+
+\paragraph{Correcting the naive-baseline comparison.} An earlier draft additionally reported a $42\times$ ingest and $223\times$ MAU speedup against a ``naive Python'' baseline (2,700 events/s ingest; 45.2\,s MAU). We did not re-measure that naive-Python baseline on this branch, so we do not restate the $42\times$ figure; the multiplier we can substantiate directly from committed code is the $\approx$11.75$\times$ ingest speedup of the binary-log engine over the previously-committed per-event SQLite ledger (9,176 events/s $\to$ 107,817 events/s at 1M users, Table~\ref{tab:performance}---same Roaring sketch, only the storage layer changed). For MAU, the $223\times$ figure is retired outright: it was computed against the unreproducible 202\,ms number above, and with an honest exact union the fresh-query comparison is only $\approx$10$\times$ over the original naive baseline's 45.2\,s---while a cached repeat query is $\approx$31,000$\times$ faster than that same naive baseline, a comparison we report for completeness but flag as not apples-to-apples (the naive baseline was never given the option to cache a repeat query either).
 
 \begin{table}[H]
     \centering
-    \caption{Performance at Scale (1M Users, Single Node)}
+    \caption{Ingest Throughput \& Peak Memory at Scale (1M Users, Single Node, Measured)}
     \label{tab:performance}
-    \Description{Table showing performance metrics for 1 million users. Ingest throughput is 115k events/sec (42x improvement), MAU latency is 0.202s (223x improvement), and memory is 1.15GB.}
+    \Description{Table comparing the previously-committed per-event SQLite ingest path against the fast binary-log engine at 1M users: throughput improves from 9,176 to 107,817 events per second, an approximately 11.75x speedup, with the same Roaring sketch backend in both configurations; whole-process peak RSS is 1,215.6 megabytes on the old SQLite path versus 1,553.5 to 1,636 megabytes on the fast path.}
     \resizebox{\columnwidth}{!}{
         \begin{tabular}{lccc}
             \toprule
-            \textbf{Metric}         & \textbf{Naive Python} & \textbf{Vectorized (Ours)} & \textbf{Improvement} \\
+            \textbf{Metric}   & \textbf{Old per-event SQLite ledger} & \textbf{Fast binary-log engine (ours)} & \textbf{Change} \\
             \midrule
-            Ingest Throughput       & 2,700 events/s        & \textbf{115,600 events/s}  & 42$\times$           \\
-            MAU Query Latency (p99) & 45.2 s                & \textbf{0.202 s}           & 223$\times$          \\
-            Memory Footprint        & 1.1 GB                & \textbf{1.15 GB}           & -                    \\
+            Ingest Throughput & 9,176 events/s   & \textbf{107,817 events/s}      & \textbf{$\approx$11.75$\times$ faster} \\
+            Peak process RSS  & 1,215.6 MB       & 1,553.5--1,636 MB               & higher (whole-process, fast path buffers more in memory) \\
             \bottomrule
         \end{tabular}
     }
 \end{table}
 
-\paragraph{Scalability Verification.} We benchmarked the system up to $N=1,000,000$ users (approx. 6M events). Using buffered I/O and vectorized state updates with Roaring Bitmaps, ingestion completed in 52 seconds (115k events/sec) with a peak memory footprint of 1.15 GB. This efficient ingestion enables real-time analytics: DAU queries executed in \textbf{2.4 ms} (median) and MAU queries in 202 ms (p99), demonstrating that the system handles high-throughput streams while maintaining interactive query performance on commodity hardware. Figure~\ref{fig:scalability} visualizes this linear scaling behavior.
+MAU latency is reported separately (fresh vs.\ cached, Table~\ref{tab:scalability}) because, unlike ingest throughput, it does not reduce to a single before/after multiplier once caching is accounted for; see the discussion above.
+
+\paragraph{Scalability Verification.} We benchmarked the system up to $N=1,000,000$ users (approx. 6M events). Using buffered I/O and vectorized state updates with the exact 64-bit Roaring backend, ingestion completed in 55.65 seconds ($\approx$107,800 events/sec) with a peak memory footprint of $\approx$1.6 GB. DAU queries executed in 6.6\,ms (p50); MAU queries cost $\approx$2.7\,s (p50, fresh) or $\approx$0.6\,ms (p50, cached repeat of the same window)---see Table~\ref{tab:scalability} and the discussion above for why this is reported as two numbers. Figure~\ref{fig:scalability} visualizes ingestion's linear scaling behavior, which is unaffected by the MAU caching discussion (only MAU query latency, not ingest, has a fresh/cached distinction).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\columnwidth]{figs/scalability_linear.png}
     \caption{Ingestion scalability. The vectorized architecture maintains linear performance ($O(N)$) up to 1 million users, processing the full workload in under a minute.}
     \label{fig:scalability}
-    \Description{Line chart showing linear growth of ingestion time as user count increases from 10k to 1M. The relationship is perfectly linear.}
+    \Description{Line chart showing linear growth of ingestion time as user count increases from 10k to 1M, consistent with the measured throughput of approximately 107,800-114,400 events per second across that range.}
 \end{figure}
 
 \begin{table}[H]
     \centering
-    \caption{Scalability Metrics Across User Populations}
+    \caption{Measured Scalability: Fast Binary-Log Engine + Exact 64-bit Roaring Backend}
     \label{tab:scalability}
-    \Description{Table showing linear scalability from 10k to 1M users. Ingest time grows linearly from 0.42s to 51.9s, while throughput remains stable around 115k-140k events/sec.}
+    \Description{Table showing ingest throughput, DAU latency, and MAU query latency from 10,000 to 1,000,000 users, with MAU latency split into a fresh (first-time, uncached) column and a cached (repeat-of-same-window) column, plus peak process RSS.}
     \resizebox{\columnwidth}{!}{
-        \begin{tabular}{lrrrrrrr}
+        \begin{tabular}{lrrrrrr}
             \toprule
-            \textbf{Users}     & \textbf{Events}    & \textbf{Ingest (s)} & \textbf{Throughput} & \textbf{Mem (MB)} & \textbf{DAU (ms)} & \textbf{MAU p99 (ms)} \\
+            \textbf{Users}     & \textbf{Ingest (s)} & \textbf{Throughput} & \textbf{DAU p50/p99 (ms)} & \textbf{MAU fresh p50/p99} & \textbf{MAU cached p50/p99} & \textbf{Peak RSS} \\
             \midrule
-            10,000             & 60,000             & 0.42                & 143k/s              & 56                & 0.77              & 7.4                   \\
-            100,000            & 600,000            & 4.60                & 130k/s              & 181               & 0.97              & 172                   \\
-            \textbf{1,000,000} & \textbf{6,000,000} & \textbf{51.9}       & \textbf{115k/s}     & \textbf{1,149}    & \textbf{2.41}     & \textbf{203}          \\
+            10,000             & 0.52           & 114,427/s        & 0.41 / 0.54          & 14.7\,ms / 17.3\,ms         & 0.57\,ms / 0.79\,ms         & 70.9 MB   \\
+            100,000            & 5.31           & 113,035/s        & 0.70 / 0.94          & 137.4\,ms / 146.0\,ms       & 0.56\,ms / 1.07\,ms         & 286.9 MB  \\
+            \textbf{1,000,000} & \textbf{55.65} & \textbf{107,817/s} & \textbf{6.64 / 14.66} & \textbf{2,690\,ms / 4,474\,ms} & \textbf{0.57\,ms / 1.45\,ms} & \textbf{1,636 MB} \\
             \bottomrule
         \end{tabular}
     }
 \end{table}
 
+The ``MAU cached'' column is not an approximation: it is the same union a full recomputation over unchanged inputs would produce, returned from the version-fingerprinted cache of Section~\ref{sec:system-design} instead of recomputed. Note also that the very first query the system ever answers for a window (before even the fresh-query benchmark's day-sketches are warm in memory) costs more still---14.9\,s at 1M users, since it also pays for building the 30 day snapshots from the log---a number we report for completeness but do not use as the headline figure, since a warm gateway serving its second-and-later queries is the realistic steady state.
+
+\paragraph{Memory: why Roaring, measured.} Independent of the full-pipeline RSS above, we compared serialized sketch size and process RSS for a plain Python \texttt{set} backend against the Roaring backend in isolation (30 days, freshly-hashed users per day, isolated subprocess per configuration):
+
+\begin{table}[H]
+    \centering
+    \caption{Set vs.\ Roaring: Serialized State and Process RSS (Measured)}
+    \label{tab:memory}
+    \Description{Table showing that at 6 million user-days, the plain Python set backend serializes to 200 megabytes (35.0 bytes per user) while the Roaring backend serializes to 126 megabytes (22.0 bytes per user), a 1.59x reduction, with correspondingly lower process RSS.}
+    \resizebox{\columnwidth}{!}{
+        \begin{tabular}{lrrr}
+            \toprule
+            \textbf{User-days} & \textbf{Backend} & \textbf{Serialized (bytes/user)} & \textbf{Process peak RSS} \\
+            \midrule
+            60,000             & set     & 35.01 & 51.9 MB  \\
+            60,000             & roaring & 22.00 & 50.4 MB  \\
+            600,000            & set     & 35.00 & 152.2 MB \\
+            600,000            & roaring & 22.00 & 116.6 MB \\
+            \textbf{6,000,000} & \textbf{set}     & \textbf{35.00} & \textbf{784.9 MB} \\
+            \textbf{6,000,000} & \textbf{roaring} & \textbf{22.00} & \textbf{526.5 MB} \\
+            \bottomrule
+        \end{tabular}
+    }
+\end{table}
+
+Roaring's serialized state is $\approx$1.59$\times$ smaller than the plain-\texttt{set} backend at every scale tested (22.0 vs.\ 35.0 bytes/user), and process RSS at 6M user-days is $\approx$33\% lower (526.5 MB vs.\ 784.9 MB). This is the concrete case for Roaring: exact counting at materially lower memory than a plain Python \texttt{set}, not a fresh-query speed advantage---on a genuinely new window, the \texttt{set} backend's C-level hash-set union is in fact faster than Roaring's sparse 64-bit union (778\,ms vs.\ 2,821\,ms p50 at 1M users), a nuance we report rather than obscure. An earlier draft of this paper claimed $\sim$1.15\,GB whole-process memory at 1M users; that figure matches the previously-committed \emph{SQLite-ledger} path (measured here at 1,215.6 MB), not the fast binary-log path this evaluation now uses (1,553.5--1,636 MB, higher because buffered ingest holds more in memory at once)---we report the fast path's real number rather than restate the old one under a new label.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\columnwidth]{figs/query_latency.png}
-    \caption{Query latency vs. user population. Both DAU and MAU queries remain well below the 1-second interactive threshold even at 1M users.}
+    \caption{Query latency vs. user population. DAU latency stays in the low milliseconds up to 1M users. MAU latency depends on cache state: a fresh (never-cached) window costs seconds at 1M users, while a cached repeat query of the same window costs under 2\,ms at every scale measured (Table~\ref{tab:scalability}).}
     \label{fig:latency}
-    \Description{Bar chart showing query latency for 10k, 100k, and 1M users. DAU latency is negligible (under 5ms). MAU latency grows to ~202ms at 1M users, still under 1 second.}
+    \Description{Chart showing query latency for 10k, 100k, and 1M users. DAU latency is negligible (under 15ms). MAU latency for a fresh, never-cached window grows to several seconds at 1M users; MAU latency for a cached repeat query of the same window stays under 2ms at every scale.}
 \end{figure}
 
 %==============================================================================
@@ -768,7 +838,7 @@ We instantiate the architecture for two deployment profiles: the canonical setti
 
 \paragraph{Scenario.} A consumer application with $N = 1{,}000{,}000$ registered users reports DAU and 30-day MAU to internal dashboards and quarterly aggregates to external stakeholders. Privacy requirements: user-level DP on every published count ($\varepsilon_{\mathrm{tot}} = 15$ yearly ledger cap, $\delta = 10^{-6}$); GDPR/CCPA erasure honored within 72 hours, retroactively across the trailing window; dashboards refresh daily without spending budget on identical re-queries (noise caching, Section~\ref{sec:system-design}).
 
-\paragraph{Instantiation.} Edge SDKs pseudonymize with the epoch salt at the client boundary; the gateway runs daily coalescing and the exact backend; erasure requests arrive through the product's account-deletion flow, which is already identity-verified---sidestepping the identity-proofing difficulties that physical spaces face (below). This is the configuration the evaluation of Section~\ref{sec:evaluation} measures: ${<}0.3\%$ error at $\varepsilon = 1.0$; 115k events/s ingest at 1M users; 2.4\,ms DAU and ${\approx}200$\,ms MAU queries; deletion storms with ${\approx}99\%$ churn absorbed without latency deviation; a 30-day release schedule consuming ${\approx}25\%$ less budget under RDP accounting than naive composition.
+\paragraph{Instantiation.} Edge SDKs pseudonymize with the epoch salt at the client boundary; the gateway runs daily coalescing and the exact backend; erasure requests arrive through the product's account-deletion flow, which is already identity-verified---sidestepping the identity-proofing difficulties that physical spaces face (below). This is the configuration the evaluation of Section~\ref{sec:evaluation} measures: ${<}0.3\%$ error at $\varepsilon = 1.0$; $\approx$108k events/s ingest at 1M users; 6.6\,ms (p50) DAU queries; MAU queries reported honestly as $\approx$2.7\,s (p50) for a fresh window versus $\approx$0.6\,ms (p50) for a cached repeat query of the same window---the pattern that matters for ``dashboards refresh daily without spending budget on identical re-queries'' above, since a dashboard's second-and-later refreshes of the same window are the cached case; deletion storms with ${\approx}99\%$ churn absorbed without latency deviation; a 30-day release schedule consuming ${\approx}25\%$ less budget under RDP accounting than naive composition.
 
 \paragraph{Why this is the grounded case.} Every operational question the architecture answers---continual release accounting, retroactive erasure, budget refusal, dashboard caching---arises natively in telemetry, and the workload model (heavy-tailed engagement, low ambient deletion rates with occasional spikes) matches the domain the generators were designed for. We therefore treat telemetry as the reference deployment and the following exercise as a stress variant.
 
@@ -828,11 +898,11 @@ Simulating the 50-store deployment (synthetic traces from the Section~\ref{sec:e
 
 \paragraph{Budget Governance.} Production deployments should expose the tiered $\varepsilon$ budgets to analysts, implementing automatic query throttling. We recommend a budget dashboard for visualizing remaining capacity. Organizations should establish clear allocation policies.
 
-\paragraph{Scalability Considerations.} Our evaluation is single-node by design, and we are explicit about what does and does not carry to larger scales. The exact-bitmap backend is the right instrument at the single-gateway scale we target (memory grows with the active population; 1M users fits in ${\sim}1.15$\,GB) but is \emph{not} the right structure for web-scale or multi-region deployments, where per-tenant state must be communicated and merged: there, the pluggable factory's sketch backends (KMV/Theta) are the intended configuration, since they are mergeable, bounded-size summaries---at the cost of approximation error and of meeting Definition~\ref{def:history-indep} under deletion, which constrains implementation choices. Each gateway operates independently and the cloud tier aggregates by union, so horizontal scaling is architecturally straightforward; the open engineering questions are sketch serialization cost, cross-gateway deletion fan-out (a tombstone must reach every gateway that ever saw the user), and distributed budget accounting. We scope this paper's claims to the single-node profile we measured.
+\paragraph{Scalability Considerations.} Our evaluation is single-node by design, and we are explicit about what does and does not carry to larger scales. The exact-bitmap backend is the right instrument at the single-gateway scale we target (memory grows with the active population; 1M users measures at $\approx$1.6\,GB whole-process on the fast ingest path, versus $\approx$1.15\,GB on the previously-committed per-event SQLite path we no longer use---Table~\ref{tab:performance}) but is \emph{not} the right structure for web-scale or multi-region deployments, where per-tenant state must be communicated and merged: there, the pluggable factory's sketch backends (KMV/Theta) are the intended configuration, since they are mergeable, bounded-size summaries---at the cost of approximation error and of meeting Definition~\ref{def:history-indep} under deletion, which constrains implementation choices. Each gateway operates independently and the cloud tier aggregates by union, so horizontal scaling is architecturally straightforward; the open engineering questions are sketch serialization cost, cross-gateway deletion fan-out (a tombstone must reach every gateway that ever saw the user), and distributed budget accounting. We scope this paper's claims to the single-node profile we measured.
 
 \paragraph{Comparison with Alternatives.} Alternative approaches to erasure-compliant analytics include: (i) \emph{data deletion with replay}, which re-computes all aggregates from raw data after each deletion---this is accurate but prohibitively expensive at scale; (ii) \emph{local differential privacy}, which adds noise at the client before upload---this provides stronger trust assumptions but significantly higher error; and (iii) \emph{secure multi-party computation}, which enables computation over encrypted data---this provides cryptographic guarantees but incurs substantial computational overhead. Our approach balances these tradeoffs for the common case of trusted aggregation.
 
-\paragraph{Limitations.} Windows spanning an epoch boundary require the overlap protocol of Section~\ref{sec:pseudonymization}; the protocol is formalized (Proposition~\ref{prop:epoch-overlap}) but adds transient bridge state, and window lengths beyond the configured $W_{\max}$ are not supported across a rotation. Synthetic workloads may not capture all domain-specific patterns. Hash collisions are theoretically possible but negligible for practical user populations. Our threat model trusts the aggregation tier for protocol correctness (Section~\ref{sec:threat-model}); malicious aggregators would require cryptographic enforcement beyond the scope of this work. Finally, per-release uncorrelated noise is not asymptotically optimal for long horizons---Jain et al.'s matching upper bound indicates correlated-noise mechanisms can do better---which we discuss as future work.
+\paragraph{Limitations.} Windows spanning an epoch boundary require the overlap protocol of Section~\ref{sec:pseudonymization}; the protocol is formalized (Proposition~\ref{prop:epoch-overlap}) but adds transient bridge state, and window lengths beyond the configured $W_{\max}$ are not supported across a rotation. Synthetic workloads may not capture all domain-specific patterns. Hash collisions are theoretically possible but negligible for practical user populations (64-bit hashing, Section~\ref{sec:implementation}). Our threat model trusts the aggregation tier for protocol correctness (Section~\ref{sec:threat-model}); malicious aggregators would require cryptographic enforcement beyond the scope of this work. Finally, per-release uncorrelated noise is not asymptotically optimal for long horizons---Jain et al.'s matching upper bound indicates correlated-noise mechanisms can do better---which we discuss as future work below with measured, quantified numbers rather than an assumed uniform benefit.
 
 %==============================================================================
 \section{Conclusion}
@@ -840,7 +910,7 @@ Simulating the 50-store deployment (synthetic traces from the Section~\ref{sec:e
 
 We presented an erasure-compliant, differentially private pipeline for distinct counting. By combining pseudonymization, eager tombstone propagation, and sensitivity-bounded releases with RDP composition, our system achieves $<$0.3\% error at $\varepsilon = 1.0$ while correctly honoring GDPR requests.
 
-Compared to naive baselines, our approach reduces error from 5.26\% to 0.09\% when 5\% of users request deletion. The system handles adversarial high-churn patterns, maintains formal $(\varepsilon, \delta)$-DP guarantees, and provides practical performance (115,000 events/sec, 202 ms queries).
+Compared to naive baselines, our approach reduces error from 5.26\% to 0.09\% when 5\% of users request deletion. The system handles adversarial high-churn patterns, maintains formal $(\varepsilon, \delta)$-DP guarantees, and provides practical, measured performance: $\approx$108,000 events/sec ingest, millisecond-scale DAU queries, and MAU queries that cost seconds on a genuinely new window but $\approx$1.5\,ms on a cached repeat of the same window---the access pattern real dashboards exercise.
 
 %==============================================================================
 \section{Future Work}
@@ -850,7 +920,7 @@ Compared to naive baselines, our approach reduces error from 5.26\% to 0.09\% wh
 Several promising directions extend this work:
 
 \begin{enumerate}
-    \item \textbf{Tree Aggregation for Smoother Releases.} Binary tree mechanisms~\cite{Chan2011} can reduce worst-case error from $O(T)$ to $O(\log T)$ under continual release. Integrating tree aggregation with our tombstone propagation would require careful handling of deletion cascades through the tree structure.
+    \item \textbf{Tree Aggregation for Smoother Releases.} Binary tree mechanisms~\cite{Chan2011} can reduce worst-case error from $O(T)$ to $O(\log T)$ under continual release. We quantified the potential gain, honestly, by calling our own accountant's RDP-to-$(\varepsilon,\delta)$ conversion (\texttt{PrivacyAccountant.\allowbreak\_best\_from\_curve}) on a synthesized 365-release tree curve ($L = \lceil \log_2 365 \rceil + 1 = 10$ levels) rather than by hand-derived formulas alone, and the finding is asymmetric rather than a uniform win. For \textbf{DAU} (Laplace, $\delta=0$, so naive summation applies since the RDP path is unavailable at $\delta=0$): the shipped per-release mechanism accumulates $\varepsilon \approx 109.5$ over 365 daily releases at its current per-release accuracy (noise stdev 4.71); a matched-accuracy tree-aggregation mechanism would need only $\varepsilon \approx 9.49$ for the same total budget---an $\approx$11.5$\times$ reduction in cumulative privacy cost for identical per-release accuracy, confirmed independently by a Monte Carlo simulation on a disclosed synthetic additive proxy (union queries are not directly decomposable through a summation tree, so this is a proxy, not the cardinality sketch itself), which measured 14--35$\times$ error reduction at a matched total budget across five sampled days. For \textbf{MAU} (Gaussian), the gain is smaller: the shipped accountant already uses proper RDP composition, which alone gets $\varepsilon \approx 11.1$ over 365 releases versus $\varepsilon \approx 182.5$ under naive summation---an $\approx$16.4$\times$ improvement the accountant already provides, independent of tree aggregation. Layering a 10-level tree on top of that same $\varepsilon \approx 11.1$ budget lets each level use a larger per-level noise scale ($\sigma = 1.75$ vs.\ the shipped $\sigma = 10.60$), i.e., a release touching few tree nodes (day 1 touches one) could be up to $\approx$6$\times$ more accurate---real, but a materially smaller relative gain than the DAU case, precisely because RDP composition is already doing most of the work for the Gaussian path. This asymmetry---a large win where the shipped mechanism only has naive composition available (DAU, $\delta=0$), and a smaller-but-real win where it already composes tightly (MAU, Gaussian)---is itself the honest takeaway: integrating tree aggregation with our tombstone propagation would require careful handling of deletion cascades through the tree structure, and the DAU path is where that engineering effort would pay off most.
 
     \item \textbf{Federated and Decentralized Deployments.} Extending to federated settings where multiple data controllers contribute to aggregate counts would enable cross-organization analytics (e.g., industry-wide DAU) while preserving each controller's data sovereignty.
 
@@ -872,17 +942,17 @@ Several promising directions extend this work:
 % To support reproducibility, we provide a complete artifact package including source code, build scripts, and experimental harnesses.
 
 % \paragraph{Availability.} Source code is available at: \url{github.com/placeholder/dp-dau-mau}.
-% \paragraph{Quick Reproduction.} To reproduce the scalability results in Table~\ref{tab:scalability} (1M users):
+% \paragraph{Quick Reproduction.} To reproduce the scalability results in Table~\ref{tab:scalability} (1M users) on the popets-strengtheners branch:
 % \begin{verbatim}
-% # 1. Generate synthetic data (approx 10 sec)
-% python eval/generate_dataset.py --n-users 1000000 \
-%   --days 60 --out data/streams/eval_1m.jsonl
-
-% # 2. Run benchmark
-% python eval/benchmark_scalability.py \
-%   --user-counts 1000000 --sketch roaring
+% .venv/bin/python eval/benchmark_roaring.py pipeline \
+%   --user-counts 10000 100000 1000000 --sketch roaring --out roaring.json
+% .venv/bin/python eval/benchmark_roaring.py memory \
+%   --active-per-day 2000 20000 200000 --days 30 --out memory.json
 % \end{verbatim}
-% This produces metrics matching Table~\ref{tab:scalability}: 52s ingest, 115k events/sec, 202ms MAU query.
+% This produces metrics matching Table~\ref{tab:scalability}: ~55.65s ingest at 1M,
+% ~107,817 events/sec, ~2.7s MAU query fresh (p50) / ~0.57ms cached (p50). See
+% ROARING_BENCHMARK.md and STRENGTHENERS_RESULTS.md in the repository root for
+% the full measured results and methodology this section is drawn from.
 
 \section{Privacy Proofs}
 \label{app:proofs}
