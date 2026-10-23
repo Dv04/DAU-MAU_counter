@@ -1,0 +1,11 @@
+# LaTeX build artifacts (the compiled paper.pdf is committed on purpose)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+comment.cut
