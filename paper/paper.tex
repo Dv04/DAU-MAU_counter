@@ -1,10 +1,5 @@
-\documentclass[sigconf,anonymous,review,balance=false]{acmart}
+\documentclass[sigconf,anonymous,review]{acmart}
 \usepackage{popets}
-
-\makeatletter
-\providecommand\@acmPrice{}
-\def\acmPrice#1{}
-\makeatother
 
 % Copyright
 \setcopyright{popets}
@@ -30,7 +25,6 @@
 \usepackage{subcaption}
 \usepackage{tikz}
 \usepackage{float}
-\usepackage{totpages}
 
 \usetikzlibrary{shapes,arrows,positioning,fit,backgrounds}
 
@@ -137,7 +131,7 @@ When releasing multiple statistics, privacy loss accumulates. Basic composition 
     where $D_\alpha$ is the Rényi divergence of order $\alpha > 1$.
 \end{definition}
 
-RDP composes linearly: $k$ applications of an $(\alpha, \rho)$-RDP mechanism yield $(\alpha, k\rho)$-RDP. Converting back to $(\varepsilon, \delta)$-DP via $\varepsilon = \rho + \frac{\ln(1/\delta)}{\alpha - 1}$ often yields tighter bounds than basic composition. Our implementation achieves approximately 25\% tighter bounds using RDP for MAU releases.
+RDP composes linearly: $k$ applications of an $(\alpha, \rho)$-RDP mechanism yield $(\alpha, k\rho)$-RDP. Converting back to $(\varepsilon, \delta)$-DP via $\varepsilon = \rho + \frac{\ln(1/\delta)}{\alpha - 1}$ often yields tighter bounds than basic composition. For 30 daily MAU releases at $\varepsilon = 0.5$ and $\delta = 10^{-6}$, our implementation's RDP conversion gives $\varepsilon_{\text{total}} \approx 3.04$ versus $15.0$ for naive summation (Section~\ref{sec:privacy-analysis}).
 
 \subsection{Distinct Counting Sketches}
 
@@ -491,7 +485,7 @@ Propositions~\ref{thm:dau-privacy} and~\ref{thm:mau-privacy} are standard conseq
 
 Theorem~\ref{thm:horizon} makes the temporal scope of our guarantees explicit: per-release statements (Propositions~\ref{thm:dau-privacy}--\ref{thm:mau-privacy}) hold for each output individually; the system-level statement holds over \emph{all} outputs jointly because every output is metered through one ledger. Deletions interact with the accounting in exactly one way: a deletion triggers a fresh, ledger-charged release of affected current metrics (Definition~\ref{def:erasure}), so erasure compliance spends budget rather than silently weakening the guarantee of remaining users.
 
-For 30 daily MAU releases at $\varepsilon = 0.5$ (and fixed $\delta$), RDP conversion yields an effective $\varepsilon_{\text{total}}$ that is approximately \textbf{25\%} lower than the $15.0$ bound given by naive sequential composition.
+For 30 daily MAU releases at $\varepsilon = 0.5$ (and fixed $\delta$), RDP conversion yields an effective $\varepsilon_{\text{total}}$ that is $\approx$\textbf{3.04} (computed with the repository's accountant at $\delta = 10^{-6}$), i.e.\ approximately \textbf{80\%} lower than the $15.0$ bound given by naive sequential composition.
 
 The key insight is that RDP leverages the subadditivity of Rényi divergence: composing mechanisms in the RDP domain and converting to $(\varepsilon, \delta)$-DP at the end yields tighter bounds than converting each mechanism individually and summing. This is particularly beneficial for continual observation scenarios where queries occur daily over extended periods.
 
@@ -504,7 +498,7 @@ By analyzing the Gaussian mechanism in the RDP framework, we observe that for a 
     \varepsilon(\delta) = \min_{\alpha>1} \left( \frac{k\alpha}{2\sigma^2} + \frac{\ln(1/\delta)}{\alpha-1} \right)
 \]
 
-As shown in Figure~\ref{fig:budget}, this approach yields significantly tighter bounds. For a 30-day window ($k=30$), RDP reduces the effective $\varepsilon$ usage by \textbf{25\%} compared to naive sequential composition, allowing for longer analytics windows without exhausting the privacy budget.
+As shown in Figure~\ref{fig:budget}, this approach yields significantly tighter bounds. For a 30-day window ($k=30$), RDP reduces the effective $\varepsilon$ usage from $15.0$ to $\approx$3.04 (about \textbf{80\%}) compared to naive sequential composition, allowing for longer analytics windows without exhausting the privacy budget.
 
 \paragraph{Privacy Accountant Unit.} Our system utilizes a unified RDP ledger that tracks the total privacy loss across heterogeneous mechanisms. Mixed releases (e.g., Laplace for DAU and Gaussian for MAU) are converted into RDP $(\alpha, \rho)$ coordinates and composed additively in the RDP domain. This allows for fine-grained budget tracking where different query types contribute different ``divergence costs'' to the shared user-level budget.
 
@@ -716,14 +710,14 @@ Figure~\ref{fig:error-epsilon} visualizes the privacy-utility tradeoff. The erro
 
 A critical operational concern for continual release systems is budget exhaustion: once the total privacy loss exceeds a pre-defined threshold, no further queries can be answered. Our RDP-based composition significantly extends the operational lifetime of the system.
 
-Figure~\ref{fig:budget} compares RDP composition against naive summation for privacy budget tracking. The divergence grows with each release, demonstrating that RDP provides compounding benefits over time. For a 365-day deployment, RDP would reduce total $\varepsilon$ consumption by approximately 50\% compared to naive summation, effectively doubling the number of queries supported under the same privacy budget.
+Figure~\ref{fig:budget} compares RDP composition against naive summation for privacy budget tracking. The divergence grows with each release, demonstrating that RDP provides compounding benefits over time. For a 365-day deployment, RDP reduces total $\varepsilon$ consumption from $182.5$ to $\approx$11.1 (about 94\%) compared to naive summation, a $\approx$16.4$\times$ improvement. The benefit is not present for a single release (the RDP conversion gives $\approx$0.59 against $0.5$ for $k=1$) and appears within the first few releases. The figure is computed with the repository's accountant for MAU releases at $\varepsilon = 0.5$ per release and $\delta = 10^{-6}$.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\columnwidth]{figs/budget_consumption.png}
-    \caption{Rényi Differential Privacy (RDP) vs. Naive Sequential Composition. RDP saves approximately 25\% of the privacy budget.}
+    \caption{Rényi Differential Privacy (RDP) vs. Naive Sequential Composition. At $k=30$ RDP composition gives $\varepsilon \approx 3.04$ versus $15.0$ for naive summation; at $k=365$, $\approx 11.1$ versus $182.5$.}
     \label{fig:budget}
-    \Description{Line chart showing privacy budget consumption over 30 days. RDP consumption is lower and flatter than the linear growth of naive sequential composition, ending approx 25\% lower.}
+    \Description{Line chart showing cumulative privacy budget consumption over 365 daily MAU releases. RDP consumption is lower and flatter than the linear growth of naive sequential composition, ending far lower than naive summation, which grows linearly.}
 \end{figure}
 
 \subsection{Performance}
@@ -838,7 +832,7 @@ We instantiate the architecture for two deployment profiles: the canonical setti
 
 \paragraph{Scenario.} A consumer application with $N = 1{,}000{,}000$ registered users reports DAU and 30-day MAU to internal dashboards and quarterly aggregates to external stakeholders. Privacy requirements: user-level DP on every published count ($\varepsilon_{\mathrm{tot}} = 15$ yearly ledger cap, $\delta = 10^{-6}$); GDPR/CCPA erasure honored within 72 hours, retroactively across the trailing window; dashboards refresh daily without spending budget on identical re-queries (noise caching, Section~\ref{sec:system-design}).
 
-\paragraph{Instantiation.} Edge SDKs pseudonymize with the epoch salt at the client boundary; the gateway runs daily coalescing and the exact backend; erasure requests arrive through the product's account-deletion flow, which is already identity-verified---sidestepping the identity-proofing difficulties that physical spaces face (below). This is the configuration the evaluation of Section~\ref{sec:evaluation} measures: ${<}0.3\%$ error at $\varepsilon = 1.0$; $\approx$108k events/s ingest at 1M users; 6.6\,ms (p50) DAU queries; MAU queries reported honestly as $\approx$2.7\,s (p50) for a fresh window versus $\approx$0.6\,ms (p50) for a cached repeat query of the same window---the pattern that matters for ``dashboards refresh daily without spending budget on identical re-queries'' above, since a dashboard's second-and-later refreshes of the same window are the cached case; deletion storms with ${\approx}99\%$ churn absorbed without latency deviation; a 30-day release schedule consuming ${\approx}25\%$ less budget under RDP accounting than naive composition.
+\paragraph{Instantiation.} Edge SDKs pseudonymize with the epoch salt at the client boundary; the gateway runs daily coalescing and the exact backend; erasure requests arrive through the product's account-deletion flow, which is already identity-verified---sidestepping the identity-proofing difficulties that physical spaces face (below). This is the configuration the evaluation of Section~\ref{sec:evaluation} measures: ${<}0.3\%$ error at $\varepsilon = 1.0$; $\approx$108k events/s ingest at 1M users; 6.6\,ms (p50) DAU queries; MAU queries reported honestly as $\approx$2.7\,s (p50) for a fresh window versus $\approx$0.6\,ms (p50) for a cached repeat query of the same window---the pattern that matters for ``dashboards refresh daily without spending budget on identical re-queries'' above, since a dashboard's second-and-later refreshes of the same window are the cached case; deletion storms with ${\approx}99\%$ churn absorbed without latency deviation; a 30-day release schedule consuming ${\approx}80\%$ less budget under RDP accounting than naive composition (Section~\ref{sec:privacy-analysis}).
 
 \paragraph{Why this is the grounded case.} Every operational question the architecture answers---continual release accounting, retroactive erasure, budget refusal, dashboard caching---arises natively in telemetry, and the workload model (heavy-tailed engagement, low ambient deletion rates with occasional spikes) matches the domain the generators were designed for. We therefore treat telemetry as the reference deployment and the following exercise as a stress variant.
 
@@ -927,70 +921,40 @@ Several promising directions extend this work:
     \item \textbf{Adaptive Privacy Budgeting.} Dynamic allocation of $\varepsilon$ based on query importance or historical usage patterns could optimize utility within fixed privacy budgets, prioritizing high-value queries during budget scarcity.
 \end{enumerate}
 
+\appendix
+
 \begin{acks}
-    The authors thank the reviewers for their constructive feedback. The authors used generative AI-based tools to revise the text, improve flow and correct any typos, grammatical errors, and awkward phrasing.
+    The authors thank the reviewers for their constructive feedback.
 \end{acks}
 
-%==============================================================================
-% \bibliographystyle{ACM-Reference-Format}
-% \bibliography{refs} % Placeholder if using bibtex, but currently embedded
+\begin{ethics}
+This work does not involve human subjects, user studies, interviews, surveys, or any data collected from real individuals, and was therefore not submitted to an IRB or to the Tor Research Safety Board. All quantitative results come from synthetic event traces produced by seeded generators in the reference implementation (Bernoulli-Beta engagement model,pseudo-random user identifiers); the two case studies (product telemetry and physical-space footfall) are simulated design exercises on such traces, and no live deployment, production telemetry, or personal data was used or observed. No real person's identifiers, video, or location data are processed anywhere in the evaluation.
 
-\newpage
-\appendix
-% \section{Artifact Appendix}
-% \label{sec:artifact}
-% To support reproducibility, we provide a complete artifact package including source code, build scripts, and experimental harnesses.
+The subject matter is privacy-protective: the system is designed to honour GDPR Article~17 erasure requests while releasing only differentially private aggregates. We see no dual-use concern beyond that of any counting service. The paper states its threat model, its trust assumptions, and the limits of its guarantees (including which components, such as the gateway and the key-management service, must be trusted, and that erasure requests themselves are control-plane data visible to the aggregation tier); the guarantees should not be read as covering deployments that violate those assumptions. The reference implementation derives epoch salts from a locally configured secret and does not include a key-management service or production key custody; it is intended for evaluation rather than direct use on real personal data without a deployment-specific security review.
+\end{ethics}
 
-% \paragraph{Availability.} Source code is available at: \url{github.com/placeholder/dp-dau-mau}.
-% \paragraph{Quick Reproduction.} To reproduce the scalability results in Table~\ref{tab:scalability} (1M users) on the popets-strengtheners branch:
-% \begin{verbatim}
-% .venv/bin/python eval/benchmark_roaring.py pipeline \
-%   --user-counts 10000 100000 1000000 --sketch roaring --out roaring.json
-% .venv/bin/python eval/benchmark_roaring.py memory \
-%   --active-per-day 2000 20000 200000 --days 30 --out memory.json
-% \end{verbatim}
-% This produces metrics matching Table~\ref{tab:scalability}: ~55.65s ingest at 1M,
-% ~107,817 events/sec, ~2.7s MAU query fresh (p50) / ~0.57ms cached (p50). See
-% ROARING_BENCHMARK.md and STRENGTHENERS_RESULTS.md in the repository root for
-% the full measured results and methodology this section is drawn from.
+\begin{openscience}
+Artifacts. The reference implementation (Python service, differential-privacy mechanisms, privacy accountant, exact set, KMV and Roaring-bitmap backends, binary-log ingest engine), the benchmark and evaluation harnesses, the committed raw result files behind every table and figure in Section~\ref{sec:evaluation}, the history-independence and tree-aggregation experiments, and the script that regenerates all figures are released under the MIT license. All results in the paper are reproducible from the committed code and result files; no proprietary or restricted data is involved, because every workload is synthetic and generated from a fixed seed.
 
-\section{Privacy Proofs}
-\label{app:proofs}
+% TODO(author): the anonymized artifact link is not created yet. Before submitting, create an
+% anonymized mirror of the repository (for example with https://anonymous.4open.science),
+% remove author, institution and organization names from the mirrored files and history,
+% and insert the link here. Do NOT link the public GitHub repository, it identifies the authors.
+\textbf{Anonymized artifact link for review: [TODO: author to insert].}
+Upon acceptance, the artifacts will be released publicly in the authors' repository, together with the benchmark configurations and raw outputs needed to regenerate the tables and figures.
+\end{openscience}
 
-\subsection{Proof of Proposition~\ref{thm:dau-privacy}}
-\begin{proof}
-    Let $D$ and $D'$ be neighboring databases differing in the set of events contributed by a single user $u$. Under the daily coalescing assumption, user $u$ contributes at most one active event to the set $S_d$ for any given day $d$.
+\begin{ai}
+The authors used generative AI-based tools to revise the text, improve flow and correct any typos, grammatical errors, and awkward phrasing.
 
-    When computing $\text{DAU}(d) = |S_d|$, the inclusion or exclusion of user $u$ changes the cardinality $|S_d|$ by at most 1. Specifically:
-    \[
-        |\text{DAU}(D) - \text{DAU}(D')| = ||S_d| - |S_d \setminus \{u\}|| \le 1
-    \]
-    Since the $L_1$ sensitivity $\Delta = 1$, the Laplace mechanism which adds noise $\eta \sim \text{Lap}(1/\varepsilon)$ satisfies $\varepsilon$-differential privacy by standard properties~\cite{Dwork2006}.
-\end{proof}
+% TODO(author): confirm or rewrite this AI-use declaration yourself. The sentence above is the
+% existing wording moved here verbatim from the former acknowledgements. It does not cover other
+% possible uses (code or experiment-harness development, figure scripts, pre-submission review,
+% related-work search) and does not include the template's suggested statement of responsibility
+% for the accuracy, originality and integrity of AI-assisted output. Add whatever is true.
+\end{ai}
 
-\subsection{Proof of Proposition~\ref{thm:mau-privacy}}
-\begin{proof}
-    The MAU metric $\text{MAU}_W(d)$ is defined as $\text{MAU}_W(d) = |\bigcup_{i=d-W+1}^{d} S_i|$.
-    Consider neighboring databases $D, D'$ differing in user $u$. User $u$ may be present in any subset of the $W$ days in the window. However, the union operation counts unique user identifiers.
-    If $u$ is present in at least one day in the window $D$, then $u \in \bigcup S_i$. If $u$ is removed to form $D'$, then $u \notin \bigcup S_i$.
-    The change in the cardinality of the union is exactly 1 (if $u$ was present) or 0 (if $u$ was not present).
-    Thus, the global sensitivity is $\Delta = 1$, regardless of the window size $W$ or the user's activity frequency.
-    The Gaussian mechanism with $\sigma = \sqrt{2\ln(1.25/\delta)}/\varepsilon$ therefore satisfies $(\varepsilon, \delta)$-DP for unit sensitivity.
-\end{proof}
-
-\subsection{Proof of Lemma~\ref{lem:rdp}}
-\begin{proof}
-    The Gaussian mechanism with sensitivity $\Delta = 1$ and noise scale $\sigma$ satisfies $(\alpha, \alpha/2\sigma^2)$-RDP for every order $\alpha > 1$~\cite{Mironov2017}. RDP composes additively under adaptive composition: a sequence of $k$ such releases satisfies $(\alpha, k\alpha/2\sigma^2)$-RDP~\cite{Mironov2017}. Converting to $(\varepsilon, \delta)$-DP via the standard conversion and minimizing over the free order,
-    \[
-        \varepsilon(\delta) = \min_{\alpha>1} \left( \frac{k\alpha}{2\sigma^2} + \frac{\ln(1/\delta)}{\alpha-1} \right),
-    \]
-    which for moderate $k$ (e.g., $k = 30$) is strictly below the naive sequential bound $\varepsilon_{\mathrm{tot}} = k\varepsilon$ obtained by converting each release individually and summing, because the single conversion pays the $\ln(1/\delta)/(\alpha-1)$ term once rather than $k$ times. Instantiating $k=30$, $\varepsilon = 0.5$ per release, and the deployment's fixed $\delta$ yields the ${\approx}25\%$ reduction reported in Section~\ref{sec:privacy-analysis}.
-\end{proof}
-
-\subsection{Proof of Theorem~\ref{thm:horizon}}
-\begin{proof}
-    Every published output is produced by a mechanism whose RDP cost at each order $\alpha$ is registered with the ledger before release; deletion-triggered re-releases pass through the same gate. Adaptive composition of RDP guarantees is additive per order~\cite{Mironov2017}, so at any point in the deployment the composed cost of all published outputs is bounded by the ledger's running total, which the admission rule keeps below the RDP curve corresponding to $(\varepsilon_{\mathrm{tot}}, \delta_{\mathrm{tot}})$ under the standard conversion. Post-processing (dashboard rendering, caching of released values) does not increase privacy loss. Hence the joint distribution of all outputs satisfies $(\varepsilon_{\mathrm{tot}}, \delta_{\mathrm{tot}})$-DP regardless of the deployment's duration; when the budget is exhausted, the ledger refuses further releases rather than exceeding the bound.
-\end{proof}
+% Bibliography is typeset from the inline list below (no .bib file yet).
 \begin{thebibliography}{50}
 
     % === FOUNDATIONAL DIFFERENTIAL PRIVACY ===
@@ -1209,5 +1173,43 @@ Several promising directions extend this work:
     \newblock \emph{PVLDB}, 7(8):637--648, 2014.
 
 \end{thebibliography}
+
+\section{Privacy Proofs}
+\label{app:proofs}
+
+\subsection{Proof of Proposition~\ref{thm:dau-privacy}}
+\begin{proof}
+    Let $D$ and $D'$ be neighboring databases differing in the set of events contributed by a single user $u$. Under the daily coalescing assumption, user $u$ contributes at most one active event to the set $S_d$ for any given day $d$.
+
+    When computing $\text{DAU}(d) = |S_d|$, the inclusion or exclusion of user $u$ changes the cardinality $|S_d|$ by at most 1. Specifically:
+    \[
+        |\text{DAU}(D) - \text{DAU}(D')| = ||S_d| - |S_d \setminus \{u\}|| \le 1
+    \]
+    Since the $L_1$ sensitivity $\Delta = 1$, the Laplace mechanism which adds noise $\eta \sim \text{Lap}(1/\varepsilon)$ satisfies $\varepsilon$-differential privacy by standard properties~\cite{Dwork2006}.
+\end{proof}
+
+\subsection{Proof of Proposition~\ref{thm:mau-privacy}}
+\begin{proof}
+    The MAU metric $\text{MAU}_W(d)$ is defined as $\text{MAU}_W(d) = |\bigcup_{i=d-W+1}^{d} S_i|$.
+    Consider neighboring databases $D, D'$ differing in user $u$. User $u$ may be present in any subset of the $W$ days in the window. However, the union operation counts unique user identifiers.
+    If $u$ is present in at least one day in the window $D$, then $u \in \bigcup S_i$. If $u$ is removed to form $D'$, then $u \notin \bigcup S_i$.
+    The change in the cardinality of the union is exactly 1 (if $u$ was present) or 0 (if $u$ was not present).
+    Thus, the global sensitivity is $\Delta = 1$, regardless of the window size $W$ or the user's activity frequency.
+    The Gaussian mechanism with $\sigma = \sqrt{2\ln(1.25/\delta)}/\varepsilon$ therefore satisfies $(\varepsilon, \delta)$-DP for unit sensitivity.
+\end{proof}
+
+\subsection{Proof of Lemma~\ref{lem:rdp}}
+\begin{proof}
+    The Gaussian mechanism with sensitivity $\Delta = 1$ and noise scale $\sigma$ satisfies $(\alpha, \alpha/2\sigma^2)$-RDP for every order $\alpha > 1$~\cite{Mironov2017}. RDP composes additively under adaptive composition: a sequence of $k$ such releases satisfies $(\alpha, k\alpha/2\sigma^2)$-RDP~\cite{Mironov2017}. Converting to $(\varepsilon, \delta)$-DP via the standard conversion and minimizing over the free order,
+    \[
+        \varepsilon(\delta) = \min_{\alpha>1} \left( \frac{k\alpha}{2\sigma^2} + \frac{\ln(1/\delta)}{\alpha-1} \right),
+    \]
+    which for moderate $k$ (e.g., $k = 30$) is strictly below the naive sequential bound $\varepsilon_{\mathrm{tot}} = k\varepsilon$ obtained by converting each release individually and summing, because the single conversion pays the $\ln(1/\delta)/(\alpha-1)$ term once rather than $k$ times. Instantiating $k=30$, $\varepsilon = 0.5$ per release, and the deployment's fixed $\delta$ yields $\varepsilon_{\mathrm{tot}} \approx 3.04$ against $15.0$ for naive summation, the reduction reported in Section~\ref{sec:privacy-analysis}.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:horizon}}
+\begin{proof}
+    Every published output is produced by a mechanism whose RDP cost at each order $\alpha$ is registered with the ledger before release; deletion-triggered re-releases pass through the same gate. Adaptive composition of RDP guarantees is additive per order~\cite{Mironov2017}, so at any point in the deployment the composed cost of all published outputs is bounded by the ledger's running total, which the admission rule keeps below the RDP curve corresponding to $(\varepsilon_{\mathrm{tot}}, \delta_{\mathrm{tot}})$ under the standard conversion. Post-processing (dashboard rendering, caching of released values) does not increase privacy loss. Hence the joint distribution of all outputs satisfies $(\varepsilon_{\mathrm{tot}}, \delta_{\mathrm{tot}})$-DP regardless of the deployment's duration; when the budget is exhausted, the ledger refuses further releases rather than exceeding the bound.
+\end{proof}
 
 \end{document}
